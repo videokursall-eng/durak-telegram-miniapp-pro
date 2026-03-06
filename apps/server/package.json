@@ -10,6 +10,7 @@
     "test": "echo todo"
   },
   "dependencies": {
+    "@durak/shared": "workspace:*",
     "fastify": "^5.0.0"
   },
   "devDependencies": {
