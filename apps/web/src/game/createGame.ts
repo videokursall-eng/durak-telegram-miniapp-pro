@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BootScene } from "./scenes/BootScene";
+import { TableScene } from "./scenes/TableScene";
 
 function getTelegramViewportHeightPx() {
   const w = window as any;
@@ -24,7 +24,7 @@ export function createGame(parent: HTMLElement) {
       width,
       height,
     },
-    scene: [BootScene],
+    scene: [TableScene],
     fps: { target: 60, forceSetTimeOut: true },
     render: { antialias: true },
   };
@@ -49,7 +49,7 @@ export function createGame(parent: HTMLElement) {
   game.destroy = (removeCanvas?: boolean) => {
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onResize);
-    return origDestroy(removeCanvas);
+    return origDestroy(!!removeCanvas);
   };
 
   return game;
