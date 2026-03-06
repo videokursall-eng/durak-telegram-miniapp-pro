@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { HandView } from "../cards/HandView";
-import type { CardModel, Suit, Rank } from "../cards/CardTypes";
+import type { CardModel } from "../cards/CardTypes";
 import { CardView } from "../cards/CardView";
 import { emitHudState, gameUiBus, type UiAction } from "../events/gameUiBus";
+import { createDemoGameState } from "../core/createDemoGameState";
 import { getTableMetrics } from "../tableLayout";
 
 type Seat = {
@@ -15,6 +16,7 @@ type Seat = {
 
 export class TableScene extends Phaser.Scene {
   private playerCount = 4;
+  private demoState = createDemoGameState();
 
   private bg!: Phaser.GameObjects.Rectangle;
   private centerZone!: Phaser.GameObjects.Rectangle;
@@ -86,6 +88,7 @@ export class TableScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-FIVE", () => this.setPlayerCount(5));
     this.input.keyboard?.on("keydown-SIX", () => this.setPlayerCount(6));
 
+    this.playerCount = this.demoState.playerCount;
     this.layout();
 
     const metrics = getTableMetrics(
@@ -100,7 +103,7 @@ export class TableScene extends Phaser.Scene {
       cardH,
       bottomMargin: metrics.reservedBottom,
     });
-    this.hand.setCards(this.makeTestHand(6));
+    this.hand.setCards(this.demoState.myHand as CardModel[]);
     this.hand.resize(this.scale.width, this.scale.height, metrics.reservedBottom);
 
     this.events.on("hand-card-drop", (card: CardView) => {
@@ -324,23 +327,6 @@ export class TableScene extends Phaser.Scene {
     addSeat(4, 340, "P5");
     addSeat(5, 20, "P6");
     return seats;
-  }
-
-  private makeTestHand(n: number): CardModel[] {
-    const suits: Suit[] = ["♠", "♥", "♦", "♣"];
-    const ranks: Rank[] = ["6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-    const cards: CardModel[] = [];
-
-    for (let i = 0; i < n; i++) {
-      cards.push({
-        id: "c" + i,
-        suit: suits[i % 4],
-        rank: ranks[(i * 2) % ranks.length],
-        faceUp: true,
-      });
-    }
-
-    return cards;
   }
 
   private placeToAttack(card: CardView) {
