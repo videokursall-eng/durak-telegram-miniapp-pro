@@ -192,6 +192,33 @@ function getRequestPath(url: string) {
   return url.split("?")[0] ?? url;
 }
 
+/**
+ * Prevent @fastify/websocket's onResponse hook from destroying the upgrade socket.
+ * The plugin stores the raw TCP socket on request.raw[kWs] and calls .destroy() in onResponse,
+ * which closes the WebSocket immediately after the handler returns. Replace that reference
+ * with a no-op so the real socket (now owned by the WebSocket) stays open.
+ * Used when we cannot rely on a pnpm patch (e.g. patch fails on clean VPS install).
+ */
+function preventWsSocketDestroy(raw: unknown) {
+  if (raw == null || typeof raw !== "object") {
+    return;
+  }
+  const obj = raw as Record<symbol, unknown>;
+  const symbols = Object.getOwnPropertySymbols(obj);
+  for (const sym of symbols) {
+    const val = obj[sym];
+    if (
+      val != null &&
+      typeof val === "object" &&
+      "destroy" in val &&
+      typeof (val as { destroy: () => void }).destroy === "function"
+    ) {
+      obj[sym] = { destroy: () => {} };
+      return;
+    }
+  }
+}
+
 function getHeader(
   request:
     | {
@@ -701,6 +728,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
       },
     });
     request.log.info({ connectionId }, "connection.ready sent");
+
+    preventWsSocketDestroy(request.raw);
 
     connection.on("message", (msg: { toString(): string }) => {
       try {
