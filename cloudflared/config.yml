@@ -1,0 +1,26 @@
+# Cloudflare Tunnel: app.games-telegram.online -> localhost:8080
+# Run:
+#   cloudflared tunnel --config ... run durak
+#
+# WebSocket: do NOT use --protocol http2 (causes 502/context canceled for WS).
+# "Incoming request ended abruptly: context canceled" often means client or edge
+# closed the connection; keepAliveTimeout helps the tunnel keep origin connections alive.
+
+tunnel: durak
+credentials-file: C:\Users\Segotep\.cloudflared\3d56ba92-1a99-4606-9323-31bd84b53c3c.json
+
+edge-ip-version: "4"
+
+dns-resolver-addrs:
+  - 1.1.1.1
+  - 8.8.8.8
+
+ingress:
+  - hostname: app.games-telegram.online
+    service: http://127.0.0.1:8080
+    originRequest:
+      connectTimeout: 30s
+      keepAliveConnections: 100
+      keepAliveTimeout: 90s
+      # No short readTimeout: WebSocket connections can be idle; closing them causes "context canceled".
+  - service: http_status:404

@@ -1,35 +1,33 @@
 import type { Card } from "../models/cards";
-import type { AttackAction, DefendAction, GameAction } from "../models/actions";
+import type {
+  AttackAction,
+  DefendAction,
+  GameAction,
+  PassAction,
+  TakeAction,
+  ThrowInAction,
+  TransferAction,
+} from "../models/actions";
 import type { GameState, PlayerState } from "../models/game";
 import {
   canAttack,
   canDefend,
-  findCardInHand,
+  canPass,
+  canTake,
+  canThrowIn,
+  canTransfer,
   findFirstUncoveredPair,
 } from "./rules";
-
-function clonePlayer(player: PlayerState): PlayerState {
-  return {
-    ...player,
-    hand: [...player.hand],
-  };
-}
-
-function cloneState(state: GameState): GameState {
-  return {
-    ...state,
-    players: state.players.map(clonePlayer),
-    deck: [...state.deck],
-    discard: [...state.discard],
-    table: {
-      pairs: state.table.pairs.map((pair) => ({
-        attack: pair.attack,
-        defense: pair.defense,
-      })),
-    },
-    winnerIds: [...state.winnerIds],
-  };
-}
+import {
+  cloneGameState,
+  getNextActivePlayerId,
+  getPlayerById,
+  resetRoundFlags,
+  resolveSuccessfulDefense,
+  resolveTake,
+  syncPlayerRoles,
+  updateEndgameState,
+} from "./round";
 
 function removeCardFromPlayerHand(player: PlayerState, cardId: string): Card {
   const index = player.hand.findIndex((card) => card.id === cardId);
@@ -41,12 +39,12 @@ function removeCardFromPlayerHand(player: PlayerState, cardId: string): Card {
   return card;
 }
 
-function applyAttack(state: GameState, action: AttackAction): GameState {
+export function applyAttackAction(state: GameState, action: AttackAction): GameState {
   if (!canAttack(state, action.playerId, action.cardIds)) {
     throw new Error("Invalid attack action");
   }
 
-  const next = cloneState(state);
+  const next = cloneGameState(state);
   const player = next.players.find((p) => p.id === action.playerId);
 
   if (!player) {
@@ -67,12 +65,12 @@ function applyAttack(state: GameState, action: AttackAction): GameState {
   return next;
 }
 
-function applyDefend(state: GameState, action: DefendAction): GameState {
+export function applyDefendAction(state: GameState, action: DefendAction): GameState {
   if (!canDefend(state, action.playerId, action.attackIndex, action.cardId)) {
     throw new Error("Invalid defend action");
   }
 
-  const next = cloneState(state);
+  const next = cloneGameState(state);
   const player = next.players.find((p) => p.id === action.playerId);
 
   if (!player) {
@@ -91,8 +89,9 @@ function applyDefend(state: GameState, action: DefendAction): GameState {
   const uncoveredIndex = findFirstUncoveredPair(next.table.pairs);
 
   if (uncoveredIndex === -1) {
-    next.phase = "attack";
-    next.currentTurnPlayerId = next.attackerId;
+    const resolved = resolveSuccessfulDefense(next);
+    resolved.version += 1;
+    return resolved;
   } else {
     next.phase = "defense";
     next.currentTurnPlayerId = next.defenderId;
@@ -103,15 +102,106 @@ function applyDefend(state: GameState, action: DefendAction): GameState {
   return next;
 }
 
+export function applyThrowInAction(state: GameState, action: ThrowInAction): GameState {
+  if (!canThrowIn(state, action.playerId, action.cardIds)) {
+    throw new Error("Invalid throw-in action");
+  }
+
+  const next = cloneGameState(state);
+  const player = next.players.find((candidate) => candidate.id === action.playerId);
+  if (!player) {
+    throw new Error("Throw-in player not found");
+  }
+
+  for (const cardId of action.cardIds) {
+    const card = removeCardFromPlayerHand(player, cardId);
+    next.table.pairs.push({ attack: card });
+  }
+
+  next.phase = "defense";
+  next.currentTurnPlayerId = next.defenderId;
+  next.version += 1;
+  return next;
+}
+
+export function applyTransferAction(state: GameState, action: TransferAction): GameState {
+  if (!canTransfer(state, action.playerId, action.cardId)) {
+    throw new Error("Invalid transfer action");
+  }
+
+  const next = cloneGameState(state);
+  const currentDefender = next.players.find((player) => player.id === action.playerId);
+  if (!currentDefender) {
+    throw new Error("Defender not found");
+  }
+
+  const transferCard = removeCardFromPlayerHand(currentDefender, action.cardId);
+  next.table.pairs.push({ attack: transferCard });
+
+  const newDefenderId = getNextActivePlayerId(next, action.playerId);
+  syncPlayerRoles(next, next.attackerId, newDefenderId);
+  resetRoundFlags(next);
+  next.phase = "defense";
+  next.currentTurnPlayerId = next.defenderId;
+  next.version += 1;
+  return next;
+}
+
+export function applyTakeAction(state: GameState, action: TakeAction): GameState {
+  if (!canTake(state, action.playerId)) {
+    throw new Error("Invalid take action");
+  }
+
+  const next = resolveTake(state);
+  next.version += 1;
+  return next;
+}
+
+export function applyPassAction(state: GameState, action: PassAction): GameState {
+  if (!canPass(state, action.playerId)) {
+    throw new Error("Invalid pass action");
+  }
+
+  const next = cloneGameState(state);
+  const player = getPlayerById(next, action.playerId);
+  if (!player) {
+    throw new Error("Passing player not found");
+  }
+
+  player.hasPassed = true;
+  updateEndgameState(next);
+  next.version += 1;
+  return next;
+}
+
+function assertNeverAction(action: never): never {
+  throw new Error(`Action is not implemented: ${JSON.stringify(action)}`);
+}
+
 export function applyAction(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "attack":
-      return applyAttack(state, action);
+      return applyAttackAction(state, action);
 
     case "defend":
-      return applyDefend(state, action);
+      return applyDefendAction(state, action);
+
+    case "throw_in":
+      return applyThrowInAction(state, action);
+
+    case "transfer":
+      return applyTransferAction(state, action);
+
+    case "take":
+      return applyTakeAction(state, action);
+
+    case "pass":
+      return applyPassAction(state, action);
+
+    case "beat":
+      throw new Error("Beat action is not used in auto-resolve mode");
 
     default:
-      throw new Error(`Action type not implemented yet: ${action.type}`);
+      return assertNeverAction(action);
   }
 }

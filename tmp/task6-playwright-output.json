@@ -1,0 +1,140 @@
+{
+  "config": {
+    "rootDir": "C:/Users/Segotep/Downloads/durak-telegram-miniapp-pro",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/Segotep/Downloads/durak-telegram-miniapp-pro/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/Segotep/Downloads/durak-telegram-miniapp-pro",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 14,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "tmp\\task6-smoke.spec.ts",
+      "file": "tmp/task6-smoke.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "local create and join room flow works",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 18084,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Waiting Room')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Waiting Room')\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Waiting Room')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Waiting Room')\u001b[22m\n\n    at C:\\Users\\Segotep\\Downloads\\durak-telegram-miniapp-pro\\tmp\\task6-smoke.spec.ts:49:49",
+                    "location": {
+                      "file": "C:\\Users\\Segotep\\Downloads\\durak-telegram-miniapp-pro\\tmp\\task6-smoke.spec.ts",
+                      "column": 49,
+                      "line": 49
+                    },
+                    "snippet": "  47 |   console.log(JSON.stringify({ authSessionA, wsCallsA }));\n  48 |\n> 49 |   await expect(pageA.getByText(\"Waiting Room\")).toBeVisible({ timeout: 15000 });\n     |                                                 ^\n  50 |   const roomCodeLineA = await pageA.getByText(/Комната:\\s*[A-Z0-9]+/).first().textContent();\n  51 |   const roomId = roomCodeLineA?.split(\":\").pop()?.trim();\n  52 |   if (!roomId) {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\Segotep\\Downloads\\durak-telegram-miniapp-pro\\tmp\\task6-smoke.spec.ts",
+                        "column": 49,
+                        "line": 49
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Waiting Room')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Waiting Room')\u001b[22m\n\n\n  47 |   console.log(JSON.stringify({ authSessionA, wsCallsA }));\n  48 |\n> 49 |   await expect(pageA.getByText(\"Waiting Room\")).toBeVisible({ timeout: 15000 });\n     |                                                 ^\n  50 |   const roomCodeLineA = await pageA.getByText(/Комната:\\s*[A-Z0-9]+/).first().textContent();\n  51 |   const roomId = roomCodeLineA?.split(\":\").pop()?.trim();\n  52 |   if (!roomId) {\n    at C:\\Users\\Segotep\\Downloads\\durak-telegram-miniapp-pro\\tmp\\task6-smoke.spec.ts:49:49"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "{\"authSessionA\":\"{\\\"token\\\":\\\"bgMtEBlzbpoaxuMKunbeQNOsq1sb8kvFCAHCL4m2wRs\\\",\\\"user\\\":{\\\"telegramUserId\\\":\\\"dev_25501804-64eb-46af-8459-c55eeea2bb79\\\",\\\"username\\\":null,\\\"firstName\\\":\\\"[dev] Alice\\\",\\\"lastName\\\":null,\\\"photoUrl\\\":null,\\\"displayName\\\":\\\"[dev] Alice\\\"}}\",\"wsCallsA\":[{\"url\":\"ws://localhost:5173/?token=SqNMtIrJ0pC6\",\"protocols\":\"vite-hmr\"},{\"url\":\"ws://127.0.0.1:8080/ws\",\"protocols\":[\"durak.v1\",\"auth.bgMtEBlzbpoaxuMKunbeQNOsq1sb8kvFCAHCL4m2wRs\"]}]}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-03-07T00:53:46.228Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\Segotep\\Downloads\\durak-telegram-miniapp-pro\\test-results\\tmp-task6-smoke-local-create-and-join-room-flow-works\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\Segotep\\Downloads\\durak-telegram-miniapp-pro\\tmp\\task6-smoke.spec.ts",
+                    "column": 49,
+                    "line": 49
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "9131a108f8dc38879c25-261103614ea68bbbad6d",
+          "file": "tmp/task6-smoke.spec.ts",
+          "line": 5,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-07T00:53:45.133Z",
+    "duration": 19301.488999999998,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

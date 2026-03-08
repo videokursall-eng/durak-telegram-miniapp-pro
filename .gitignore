@@ -5,6 +5,10 @@ build
 .DS_Store
 .env
 .env.*
+!.env.example
+!.env.vps.example
+!.env.local.example
+!.env.production
 pnpm-lock.yaml
 package-lock.json
 yarn.lock

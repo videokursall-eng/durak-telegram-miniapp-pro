@@ -1,6 +1,11 @@
 import Phaser from "phaser";
 import { TableScene } from "./scenes/TableScene";
 
+export type PhaserGameHandle = {
+  game: Phaser.Game;
+  tableScene: TableScene;
+};
+
 function getTelegramViewportHeightPx() {
   const w = window as any;
   const tg = w?.Telegram?.WebApp;
@@ -8,6 +13,7 @@ function getTelegramViewportHeightPx() {
 }
 
 export function createGame(parent: HTMLElement) {
+  const tableScene = new TableScene();
   const rect = parent.getBoundingClientRect();
   const tgH = getTelegramViewportHeightPx();
 
@@ -24,7 +30,7 @@ export function createGame(parent: HTMLElement) {
       width,
       height,
     },
-    scene: [TableScene],
+    scene: [tableScene],
     fps: { target: 60, forceSetTimeOut: true },
     render: { antialias: true },
   };
@@ -52,5 +58,8 @@ export function createGame(parent: HTMLElement) {
     return origDestroy(!!removeCanvas);
   };
 
-  return game;
+  return {
+    game,
+    tableScene,
+  } satisfies PhaserGameHandle;
 }

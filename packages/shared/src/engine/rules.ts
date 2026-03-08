@@ -1,5 +1,15 @@
 import type { Card } from "../models/cards";
 import type { GameState, PlayerId, TablePair } from "../models/game";
+import {
+  allCardsShareRank,
+  canAddAttackCards,
+  findFirstUncoveredPairIndex,
+  getNextActivePlayerId,
+  getPlayerById,
+  getRanksOnTable,
+  getRoundParticipants,
+  isPlayerFinished,
+} from "./round";
 
 const RANK_ORDER = ["6", "7", "8", "9", "10", "J", "Q", "K", "A"] as const;
 
@@ -25,24 +35,17 @@ export function canAttack(state: GameState, playerId: PlayerId, cardIds: string[
   if (!isPlayerTurn(state, playerId)) return false;
   if (state.attackerId !== playerId) return false;
   if (!cardIds.length) return false;
+  if (state.table.pairs.length > 0) return false;
+  if (isPlayerFinished(state, playerId)) return false;
 
   const player = findPlayer(state, playerId);
   if (!player) return false;
 
   const cards = cardIds.map((cardId) => player.hand.find((card) => card.id === cardId));
   if (cards.some((card) => !card)) return false;
+  if (!allCardsShareRank(cards as Card[])) return false;
 
-  if (state.table.pairs.length === 0) {
-    return true;
-  }
-
-  const ranksOnTable = new Set<string>();
-  for (const pair of state.table.pairs) {
-    ranksOnTable.add(pair.attack.rank);
-    if (pair.defense) ranksOnTable.add(pair.defense.rank);
-  }
-
-  return cards.every((card) => card && ranksOnTable.has(card.rank));
+  return canAddAttackCards(state, cards.length);
 }
 
 export function canDefend(
@@ -68,6 +71,64 @@ export function canDefend(
   return canBeat(pair.attack, defendCard, state.trumpSuit);
 }
 
+export function canThrowIn(state: GameState, playerId: PlayerId, cardIds: string[]): boolean {
+  if (state.phase !== "defense") return false;
+  if (state.table.pairs.length === 0) return false;
+  if (!cardIds.length) return false;
+  if (state.defenderId === playerId) return false;
+  if (isPlayerFinished(state, playerId)) return false;
+
+  const participant = getRoundParticipants(state).find((player) => player.id === playerId);
+  if (!participant || participant.hasPassed) return false;
+
+  const cards = cardIds.map((cardId) => participant.hand.find((card) => card.id === cardId));
+  if (cards.some((card) => !card)) return false;
+  if (!canAddAttackCards(state, cards.length)) return false;
+
+  const ranksOnTable = getRanksOnTable(state);
+  return cards.every((card) => card && ranksOnTable.has(card.rank));
+}
+
+export function canTransfer(state: GameState, playerId: PlayerId, cardId: string): boolean {
+  if (state.mode !== "transfer") return false;
+  if (state.phase !== "defense") return false;
+  if (state.defenderId !== playerId) return false;
+  if (!state.table.pairs.length) return false;
+  if (state.table.pairs.some((pair) => pair.defense)) return false;
+
+  const player = getPlayerById(state, playerId);
+  const nextDefenderId = getNextActivePlayerId(state, playerId);
+  const nextDefender = getPlayerById(state, nextDefenderId);
+  if (!player || !nextDefender || nextDefender.id === state.attackerId) return false;
+
+  const transferCard = player.hand.find((card) => card.id === cardId);
+  if (!transferCard) return false;
+
+  const ranksOnTable = getRanksOnTable(state);
+  if (!ranksOnTable.has(transferCard.rank)) return false;
+
+  const transferPairCount = state.table.pairs.length + 1;
+  return transferPairCount <= Math.min(6, nextDefender.hand.length);
+}
+
+export function canTake(state: GameState, playerId: PlayerId): boolean {
+  if (state.phase !== "defense") return false;
+  if (state.defenderId !== playerId) return false;
+  return state.table.pairs.length > 0;
+}
+
+export function canPass(state: GameState, playerId: PlayerId): boolean {
+  if (state.phase !== "defense") return false;
+  if (state.table.pairs.length === 0) return false;
+  if (state.defenderId === playerId) return false;
+  if (isPlayerFinished(state, playerId)) return false;
+
+  const participant = getRoundParticipants(state).find((player) => player.id === playerId);
+  if (!participant) return false;
+
+  return !participant.hasPassed;
+}
+
 export function canBeat(
   attackCard: Card,
   defendCard: Card,
@@ -90,5 +151,5 @@ export function canBeat(
 }
 
 export function findFirstUncoveredPair(pairs: TablePair[]): number {
-  return pairs.findIndex((pair) => !pair.defense);
+  return findFirstUncoveredPairIndex(pairs);
 }

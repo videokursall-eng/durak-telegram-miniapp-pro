@@ -32,4 +32,19 @@
 - На сервере нужно проверять `initData` (подпись Telegram), иначе легко подменить пользователя.
 Смотри `docs/SECURITY.md`.
 
+## Запуск через Telegram (BotFather / Mini App)
+
+Чтобы открывать приложение из Telegram как WebApp:
+
+1. **Задать Web App URL в BotFather**  
+   [@BotFather](https://t.me/BotFather) → ваш бот → **Bot Settings** → **Menu Button** → **Configure menu button** → в поле **URL** укажите **HTTPS** вашего развёрнутого фронта (не localhost). Этот же URL задайте в `VITE_TELEGRAM_MINI_APP_URL` при сборке фронта.
+
+2. **Открыть Mini App из Telegram**  
+   Откройте чат с ботом → нажмите кнопку меню (слева внизу) — откроется ваш Mini App. Или используйте ссылку `https://t.me/YourBotUsername` (и при необходимости `?startapp=ShortName`).
+
+3. **Проверить initData**  
+   Приложение получает `initData` только при открытии из Telegram WebView. Убедиться можно по логам сервера: при нажатии «Создать комнату» должен появиться **"Telegram auth success"**. Либо в отладочной консоли WebView проверить `window.Telegram?.WebApp?.initData` (должна быть непустая строка).
+
+Подробно: **TELEGRAM-BOTFATHER-SETUP.md** (настройка бота, согласование URL, проверка initData). Конфигурация env и URL: **ENV-AND-URLS.md**.
+
 Удачной разработки! 🚀

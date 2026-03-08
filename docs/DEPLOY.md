@@ -8,6 +8,9 @@
 ## Переменные окружения
 Смотри `.env.example` в `apps/server` и `apps/web`.
 
+## Telegram Mini App launch
+Подробный production launch flow, BotFather steps и release checklist теперь описаны в `docs/TELEGRAM_MINI_APP_LAUNCH.md`.
+
 ## BotFather
 - привязать URL Mini App (Web App)
 - сделать кнопку меню “Играть”

@@ -2,9 +2,21 @@
   "name": "durak-telegram-miniapp-pro",
   "private": true,
   "packageManager": "pnpm@10.30.3",
+  "pnpm": {
+    "patchedDependencies": {
+      "@fastify/websocket@11.2.0": "patches/@fastify/websocket@11.2.0.patch"
+    }
+  },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
+    "build:prod": "pnpm build",
+    "start": "pnpm start:server",
+    "start:server": "pnpm --filter @durak/server start",
+    "start:prod": "node apps/server/dist/index.js",
+    "preview:web": "pnpm --filter web preview",
+    "deploy:check": "pnpm typecheck && pnpm test && pnpm build",
+    "verify:local": "pnpm --filter @durak/server verify:local",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"

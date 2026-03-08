@@ -28,6 +28,7 @@ export class HandView {
   private availableW = 0;
 
   private dragState: DragState | null = null;
+  private isFirstLayout = true;
 
   constructor(scene: Phaser.Scene, opts: HandViewOptions) {
     this.scene = scene;
@@ -79,6 +80,7 @@ export class HandView {
   public setCards(models: CardModel[]) {
     for (const c of this.cards) c.destroy();
     this.cards = [];
+    this.isFirstLayout = true;
 
     for (const m of models) {
       const cv = new CardView(this.scene, m, 0, 0, {
@@ -134,12 +136,30 @@ export class HandView {
       const card = this.cards[i];
       if (this.dragState?.card === card) continue;
 
-      card.x = startX + i * step;
-      card.y = this.baseY - (card.selected ? 18 : 0);
-      card.rotation = 0;
+      const targetX = startX + i * step;
+      const targetY = this.baseY - (card.selected ? 18 : 0);
+      const targetRotation = Phaser.Math.DegToRad(Phaser.Math.Linear(-4, 4, n <= 1 ? 0.5 : i / (n - 1)));
+
       card.setDepth(100 + i);
       card.setVisibleHitArea(visibleStrip, i === this.cards.length - 1);
+
+      if (this.isFirstLayout) {
+        card.x = targetX;
+        card.y = targetY;
+        card.rotation = targetRotation;
+      } else {
+        this.scene.tweens.add({
+          targets: card,
+          x: targetX,
+          y: targetY,
+          rotation: targetRotation,
+          duration: 160,
+          ease: "Cubic.Out",
+        });
+      }
     }
+
+    this.isFirstLayout = false;
   }
 
   public removeCard(card: CardView) {
