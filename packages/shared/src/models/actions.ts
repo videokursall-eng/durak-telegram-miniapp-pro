@@ -1,5 +1,5 @@
-import type { CardId } from "./cards";
-import type { PlayerId } from "./game";
+import type { CardId } from "./cards.js";
+import type { PlayerId } from "./game.js";
 
 export type AttackAction = {
   type: "attack";

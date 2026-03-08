@@ -17,8 +17,8 @@ import {
   type RoomStateMessage,
   type ServerToClientMessage,
 } from "@durak/shared";
-import type { TelegramUserIdentity } from "../auth/types";
-import { hashRoomSessionToken, type RuntimeRoomState } from "../persistence/domain";
+import type { TelegramUserIdentity } from "../auth/types.js";
+import { hashRoomSessionToken, type RuntimeRoomState } from "../persistence/domain.js";
 
 const MAX_ROOM_PLAYERS = 6;
 

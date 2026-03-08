@@ -1,4 +1,4 @@
-import type { Card, CardId, Suit } from "./cards";
+import type { Card, CardId, Suit } from "./cards.js";
 
 export type GameMode = "simple" | "transfer";
 

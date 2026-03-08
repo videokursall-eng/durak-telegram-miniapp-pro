@@ -7,17 +7,17 @@ import {
   type ClientToServerMessage,
   type ErrorMessage,
 } from "@durak/shared";
-import { AuthSessionStore } from "./auth/sessionStore";
-import { verifyTelegramInitData } from "./auth/verifyTelegramInitData";
-import { extractAuthTokenFromSubprotocolHeader, extractAuthTokenFromQuery } from "./auth/wsAuth";
-import { createInMemoryPersistence } from "./persistence/memory/InMemoryPersistence";
-import { RoomRegistry } from "./rooms/RoomRegistry";
-import type { TelegramUserIdentity } from "./auth/types";
-import { GameRoom } from "./rooms/GameRoom";
-import { ReconnectService } from "./services/ReconnectService";
-import { RoomLifecycleService } from "./services/RoomLifecycleService";
-import { readAppConfig } from "./config";
-import { createRoomRateLimiters } from "./lib/rateLimit";
+import { AuthSessionStore } from "./auth/sessionStore.js";
+import { verifyTelegramInitData } from "./auth/verifyTelegramInitData.js";
+import { extractAuthTokenFromSubprotocolHeader, extractAuthTokenFromQuery } from "./auth/wsAuth.js";
+import { createInMemoryPersistence } from "./persistence/memory/InMemoryPersistence.js";
+import { RoomRegistry } from "./rooms/RoomRegistry.js";
+import type { TelegramUserIdentity } from "./auth/types.js";
+import { GameRoom } from "./rooms/GameRoom.js";
+import { ReconnectService } from "./services/ReconnectService.js";
+import { RoomLifecycleService } from "./services/RoomLifecycleService.js";
+import { readAppConfig } from "./config.js";
+import { createRoomRateLimiters } from "./lib/rateLimit.js";
 
 type SocketConnection = {
   send: (payload: string) => unknown;

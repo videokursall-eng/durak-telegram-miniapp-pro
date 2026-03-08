@@ -1,5 +1,5 @@
 import type { GameMode, GameState, PlayerId } from "@durak/shared";
-import type { TelegramUserIdentity } from "../../auth/types";
+import type { TelegramUserIdentity } from "../../auth/types.js";
 import type {
   LiveRoomStore,
   MatchPlayerRepository,
@@ -12,7 +12,7 @@ import type {
   SnapshotRepository,
   StatsRepository,
   UserRepository,
-} from "../contracts";
+} from "../contracts.js";
 import {
   createEntityId,
   createPersistentUser,
@@ -28,7 +28,7 @@ import {
   type PersistentRoomMembership,
   type PersistentUser,
   type PersistentUserStats,
-} from "../domain";
+} from "../domain.js";
 
 type Clock = () => number;
 

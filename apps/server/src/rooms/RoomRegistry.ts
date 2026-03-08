@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { GameRoom } from "./GameRoom";
-import type { RuntimeRoomState } from "../persistence/domain";
+import { GameRoom } from "./GameRoom.js";
+import type { RuntimeRoomState } from "../persistence/domain.js";
 
 function createRoomId() {
   return randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();

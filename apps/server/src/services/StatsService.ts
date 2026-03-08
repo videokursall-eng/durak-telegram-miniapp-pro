@@ -1,5 +1,5 @@
 import type { GameMode } from "@durak/shared";
-import type { StatsRepository } from "../persistence/contracts";
+import type { StatsRepository } from "../persistence/contracts.js";
 
 type RecordMatchStatsInput = {
   matchId: string;

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { GameMode, GameState, PlayerId } from "@durak/shared";
-import type { TelegramUserIdentity, TrustedAuthSession } from "../auth/types";
+import type { TelegramUserIdentity, TrustedAuthSession } from "../auth/types.js";
 
 export type DurableRoomStatus = "lobby" | "in_game" | "finished" | "abandoned";
 export type DurableMatchStatus = "active" | "finished" | "abandoned";

@@ -1,5 +1,5 @@
 import type { GameMode, GameState, PlayerId } from "@durak/shared";
-import type { TelegramUserIdentity } from "../auth/types";
+import type { TelegramUserIdentity } from "../auth/types.js";
 import type {
   LiveRoomSessionLink,
   LiveRoomState,
@@ -13,7 +13,7 @@ import type {
   PersistentRoomMembership,
   PersistentUser,
   PersistentUserStats,
-} from "./domain";
+} from "./domain.js";
 
 export type UserRepository = {
   upsertTelegramIdentity(identity: TelegramUserIdentity): PersistentUser;

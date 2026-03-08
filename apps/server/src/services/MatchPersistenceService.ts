@@ -1,7 +1,7 @@
 import type { GameState } from "@durak/shared";
-import type { PersistenceContainer } from "../persistence/contracts";
-import type { RuntimeRoomState } from "../persistence/domain";
-import { StatsService } from "./StatsService";
+import type { PersistenceContainer } from "../persistence/contracts.js";
+import type { RuntimeRoomState } from "../persistence/domain.js";
+import { StatsService } from "./StatsService.js";
 
 type MatchPersistenceServiceOptions = {
   nowMs?: () => number;

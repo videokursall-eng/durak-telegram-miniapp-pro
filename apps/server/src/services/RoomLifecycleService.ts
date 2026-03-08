@@ -1,11 +1,11 @@
-import type { TelegramUserIdentity } from "../auth/types";
-import type { PersistenceContainer } from "../persistence/contracts";
+import type { TelegramUserIdentity } from "../auth/types.js";
+import type { PersistenceContainer } from "../persistence/contracts.js";
 import {
   hashRoomSessionToken,
   type RuntimeRoomMember,
   type RuntimeRoomState,
-} from "../persistence/domain";
-import { MatchPersistenceService } from "./MatchPersistenceService";
+} from "../persistence/domain.js";
+import { MatchPersistenceService } from "./MatchPersistenceService.js";
 
 type RoomLifecycleServiceOptions = {
   nowMs?: () => number;

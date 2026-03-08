@@ -1,7 +1,7 @@
 import type { GameMode, GameState } from "@durak/shared";
-import type { PersistenceContainer } from "../persistence/contracts";
-import type { RuntimeRoomState } from "../persistence/domain";
-import { RoomLifecycleService } from "./RoomLifecycleService";
+import type { PersistenceContainer } from "../persistence/contracts.js";
+import type { RuntimeRoomState } from "../persistence/domain.js";
+import { RoomLifecycleService } from "./RoomLifecycleService.js";
 
 type ReconnectServiceOptions = {
   nowMs?: () => number;

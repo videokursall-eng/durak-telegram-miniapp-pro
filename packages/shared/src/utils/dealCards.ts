@@ -1,5 +1,5 @@
-import type { Card } from "../models/cards";
-import type { PlayerState } from "../models/game";
+import type { Card } from "../models/cards.js";
+import type { PlayerState } from "../models/game.js";
 
 type DealCardsOptions = {
   players: PlayerState[];

@@ -1,5 +1,5 @@
-import type { Card } from "../models/cards";
-import type { GameState, PlayerId, TablePair } from "../models/game";
+import type { Card } from "../models/cards.js";
+import type { GameState, PlayerId, TablePair } from "../models/game.js";
 import {
   allCardsShareRank,
   canAddAttackCards,
@@ -9,7 +9,7 @@ import {
   getRanksOnTable,
   getRoundParticipants,
   isPlayerFinished,
-} from "./round";
+} from "./round.js";
 
 const RANK_ORDER = ["6", "7", "8", "9", "10", "J", "Q", "K", "A"] as const;
 

@@ -1,4 +1,4 @@
-import type { Card } from "../models/cards";
+import type { Card } from "../models/cards.js";
 
 export function shuffleDeck(cards: Card[]): Card[] {
   const deck = [...cards];

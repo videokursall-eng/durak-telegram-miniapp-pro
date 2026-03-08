@@ -29,8 +29,8 @@ process.on("unhandledRejection", (reason, promise) => {
   // Log but do not exit; allow the app to keep running.
 });
 
-import { buildApp } from "./app";
-import { readAppConfig } from "./config";
+import { buildApp } from "./app.js";
+import { readAppConfig } from "./config.js";
 
 const config = readAppConfig();
 

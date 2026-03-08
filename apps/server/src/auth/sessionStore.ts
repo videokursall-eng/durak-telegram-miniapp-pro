@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { TelegramUserIdentity, TrustedAuthSession } from "./types";
+import type { TelegramUserIdentity, TrustedAuthSession } from "./types.js";
 
 const DEFAULT_TOKEN_TTL_SECONDS = 86400;
 

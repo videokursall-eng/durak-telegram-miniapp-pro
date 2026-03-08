@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { TelegramUserIdentity } from "./types";
+import type { TelegramUserIdentity } from "./types.js";
 
 /**
  * Validates Telegram Mini App initData and returns the authenticated user identity.

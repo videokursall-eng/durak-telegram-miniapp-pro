@@ -1,4 +1,4 @@
-import type { Card } from "../models/cards";
+import type { Card } from "../models/cards.js";
 import type {
   AttackAction,
   DefendAction,
@@ -7,8 +7,8 @@ import type {
   TakeAction,
   ThrowInAction,
   TransferAction,
-} from "../models/actions";
-import type { GameState, PlayerState } from "../models/game";
+} from "../models/actions.js";
+import type { GameState, PlayerState } from "../models/game.js";
 import {
   canAttack,
   canDefend,
@@ -17,7 +17,7 @@ import {
   canThrowIn,
   canTransfer,
   findFirstUncoveredPair,
-} from "./rules";
+} from "./rules.js";
 import {
   cloneGameState,
   getNextActivePlayerId,
@@ -27,7 +27,7 @@ import {
   resolveTake,
   syncPlayerRoles,
   updateEndgameState,
-} from "./round";
+} from "./round.js";
 
 function removeCardFromPlayerHand(player: PlayerState, cardId: string): Card {
   const index = player.hand.findIndex((card) => card.id === cardId);

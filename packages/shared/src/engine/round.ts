@@ -1,5 +1,5 @@
-import type { Card } from "../models/cards";
-import type { GameState, PlayerId, PlayerState, TablePair } from "../models/game";
+import type { Card } from "../models/cards.js";
+import type { GameState, PlayerId, PlayerState, TablePair } from "../models/game.js";
 
 const MAX_ATTACK_CARDS = 6;
 

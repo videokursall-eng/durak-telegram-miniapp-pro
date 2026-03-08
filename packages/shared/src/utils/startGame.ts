@@ -1,13 +1,13 @@
-import { createDeck36, type Card } from "../models/cards";
+import { createDeck36, type Card } from "../models/cards.js";
 import {
   createEmptyGameState,
   type GameMode,
   type GameState,
   type PlayerId,
   type PlayerState,
-} from "../models/game";
-import { shuffleDeck } from "./shuffleDeck";
-import { dealCards } from "./dealCards";
+} from "../models/game.js";
+import { shuffleDeck } from "./shuffleDeck.js";
+import { dealCards } from "./dealCards.js";
 
 type StartGamePlayer = {
   id: PlayerId;

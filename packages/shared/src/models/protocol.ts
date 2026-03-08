@@ -1,7 +1,7 @@
-import type { GameAction } from "./actions";
-import type { GameState } from "./game";
-import type { GameMode } from "./game";
-import type { RoomSnapshot } from "./room";
+import type { GameAction } from "./actions.js";
+import type { GameState } from "./game.js";
+import type { GameMode } from "./game.js";
+import type { RoomSnapshot } from "./room.js";
 
 export type RoomStateMessage = {
   type: "room.state";

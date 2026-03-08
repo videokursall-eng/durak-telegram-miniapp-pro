@@ -6,4 +6,4 @@ export {
   withHandsRefilledFromDeck,
   withPlayerRoles,
   withRoundFlagsReset,
-} from "./round";
+} from "./round.js";

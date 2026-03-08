@@ -1,4 +1,4 @@
-import type { GameMode, PlayerId } from "./game";
+import type { GameMode, PlayerId } from "./game.js";
 
 export type RoomStatus = "lobby" | "in_game";
 
