@@ -1061,17 +1061,13 @@ export function useGameSession(autoConnect = true) {
         diagLog("effect: already connected, skip");
         return;
       }
-      if (snapshot.telegramBootstrapStatus === "idle" && snapshot.connectionStatus !== "connected") {
+      if (snapshot.telegramBootstrapStatus === "idle") {
         diagLog("effect: telegramBootstrapStatus idle, not connected -> startTelegramBootstrap()");
         void gameSessionStore.startTelegramBootstrap();
       }
       if (snapshot.telegramBootstrapStatus === "success" && snapshot.authToken) {
-        if (snapshot.connectionStatus !== "connected") {
-          diagLog("effect: bootstrap success, authToken present, not connected -> connect()");
-          gameSessionStore.connect(snapshot.authToken);
-        } else {
-          diagLog("effect: bootstrap success but already connected, skip connect");
-        }
+        diagLog("effect: bootstrap success, authToken present, not connected -> connect()");
+        gameSessionStore.connect(snapshot.authToken);
       }
       return;
     }
