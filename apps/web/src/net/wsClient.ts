@@ -10,6 +10,14 @@ function wsLog(...args: unknown[]) {
   if (WS_DIAG) console.log("[ws]", ...args);
 }
 
+function captureDisconnectStack(): string {
+  try {
+    throw new Error("disconnect() call site");
+  } catch (e) {
+    return e instanceof Error ? e.stack ?? String(e) : String(e);
+  }
+}
+
 export class WsClient {
   private socket: WebSocket | null = null;
   private onMessage: WsMessageHandler;
@@ -30,7 +38,7 @@ export class WsClient {
    */
   connect(url: string, protocols: string | string[]) {
     if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
-      wsLog("connect called but socket already exists, state:", this.socket.readyState);
+      wsLog("connect called but socket already exists, state:", this.socket.readyState, "url:", url.replace(/token=[^&]+/, "token=***"));
       return;
     }
 
@@ -44,10 +52,11 @@ export class WsClient {
       return;
     }
 
-    wsLog("connect called", url.replace(/token=[^&]+/, "token=***"));
+    wsLog("connect(url, protocols) called", "url:", url.replace(/token=[^&]+/, "token=***"), "protocolsCount:", validProtocols.length);
     this.isManualClose = false;
     const socket = new WebSocket(url, validProtocols);
     this.socket = socket;
+    wsLog("new WebSocket created");
 
     socket.onmessage = (event) => {
       try {
@@ -60,13 +69,20 @@ export class WsClient {
     };
 
     socket.onopen = () => {
-      wsLog("ws open");
+      wsLog("socket.onopen", "readyState:", socket.readyState);
       this.onStatus?.(true);
       if (import.meta.env.DEV) console.log("WS connected");
     };
 
     socket.onclose = (event) => {
-      wsLog("ws close", "code:", event.code, "reason:", event.reason, "clean:", event.wasClean);
+      wsLog(
+        "socket.onclose",
+        "code:", event.code,
+        "reason:", event.reason,
+        "wasClean:", event.wasClean,
+        "readyState:", socket.readyState,
+        "isManualClose:", this.isManualClose
+      );
       if (this.socket === socket) {
         this.socket = null;
       }
@@ -79,14 +95,16 @@ export class WsClient {
     };
 
     socket.onerror = () => {
-      wsLog("ws error event");
+      wsLog("socket.onerror");
       this.onError?.("WebSocket connection error");
       if (import.meta.env.DEV) console.error("WS error");
     };
   }
 
   disconnect() {
-    wsLog("disconnect called");
+    const stack = WS_DIAG ? captureDisconnectStack() : "";
+    wsLog("disconnect() called", "isManualClose set to true", "hasSocket:", !!this.socket, "readyState:", this.socket?.readyState);
+    if (WS_DIAG && stack) wsLog("disconnect call stack:", stack);
     this.isManualClose = true;
     this.socket?.close();
     this.socket = null;

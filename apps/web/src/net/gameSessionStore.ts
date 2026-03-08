@@ -197,15 +197,18 @@ class GameSessionStore {
 
   connect = (optionalToken?: string) => {
     const token = optionalToken ?? this.snapshot.authToken ?? null;
+    diagLog("connect called", "optionalToken:", !!optionalToken, "hasToken:", !!token, "connectionStatus:", this.snapshot.connectionStatus);
     // Never open WebSocket without a valid token (except demo fallback).
     if (!token && !this.snapshot.isUsingDemoFallback) {
       if (isLocalDevAuthEnabled()) {
+        diagLog("connect skipped: no token, local dev");
         return;
       }
       this.maybeEnableDemoFallback();
       return;
     }
     if (this.snapshot.isUsingDemoFallback) {
+      diagLog("connect skipped: demo fallback");
       return;
     }
 
@@ -217,7 +220,7 @@ class GameSessionStore {
 
     // If there is already a socket (e.g. disconnected but client ref left), close it and reconnect with auth.
     if (this.client) {
-      diagLog("connect called, client replaced (was disconnected/idle)");
+      diagLog("connect called, client replaced (was disconnected/idle), disconnecting old client");
       if (import.meta.env.DEV) {
         console.info("[dev] reconnect after auth");
       }
@@ -225,7 +228,7 @@ class GameSessionStore {
       this.client = null;
     }
 
-    diagLog("connect called, opening new socket");
+    diagLog("connect: opening new socket");
     this.clearConnectingTimeout();
     this.setSnapshot({
       connectionStatus: "connecting",
@@ -275,7 +278,7 @@ class GameSessionStore {
   };
 
   disconnect = () => {
-    diagLog("disconnect called", "hasClient:", !!this.client);
+    diagLog("disconnect called", "hasClient:", !!this.client, "connectionStatus:", this.snapshot.connectionStatus);
     if (!this.client) {
       return;
     }
@@ -313,14 +316,26 @@ class GameSessionStore {
       tg.expand?.();
     }
 
+    // Clear any existing socket before auth so we don't close the post-auth socket in .then() race.
+    if (this.client) {
+      diagLog("startTelegramBootstrap: disconnecting existing client before auth");
+      this.client.disconnect();
+      this.client = null;
+      this.clearConnectingTimeout();
+      this.setSnapshot({ connectionStatus: "disconnected" });
+    }
+
     this.setSnapshot({ telegramBootstrapStatus: "loading", lastError: null });
     this.authPromise = this.ensureAuthenticated(undefined, true);
     return this.authPromise
       .then(() => {
         this.setSnapshot({ telegramBootstrapStatus: "success" });
-        // After successful auth: close any existing socket so the next connect() creates a single authorized socket.
-        // Skip if already connected (e.g. user clicked Retry by mistake) to avoid closing a healthy WS.
-        if (this.client && this.snapshot.connectionStatus !== "connected") {
+        // Do NOT disconnect a client here: React's effect will run (sync or next tick) and call connect(),
+        // so this.client may already be the newly opened socket in "connecting" state. Closing it caused
+        // "WebSocket connection closed" right after connection.ready. Only close a truly stale pre-auth
+        // socket; we no longer do that here to avoid the race. Any stale socket is cleared at bootstrap start.
+        if (this.client && this.snapshot.connectionStatus !== "connected" && this.snapshot.connectionStatus !== "connecting") {
+          diagLog("bootstrap success: closing stale pre-auth client");
           this.client.disconnect();
           this.client = null;
           this.setSnapshot({ connectionStatus: "disconnected" });
@@ -457,9 +472,10 @@ class GameSessionStore {
     switch (message.type) {
       case "connection.ready":
         // First server message after handshake. Set "connected" so UI leaves "Подключаемся к серверу".
-        diagLog("connection.ready received (handleMessage)");
+        diagLog("connection.ready received (handleMessage)", "connectionStatus before:", this.snapshot.connectionStatus);
         if (this.snapshot.connectionStatus === "connecting") {
-          this.setSnapshot({ connectionStatus: "connected" })
+          this.setSnapshot({ connectionStatus: "connected" });
+          diagLog("connectionStatus set to connected after connection.ready");
         }
         if (import.meta.env.DEV) {
           console.info(
@@ -571,7 +587,18 @@ class GameSessionStore {
   }
 
   private handleStatusChange = (connected: boolean, source?: WsClient, closeCode?: number, closeReason?: string) => {
-    diagLog("handleStatusChange", connected ? "true" : "false", "closeCode:", closeCode, "closeReason:", closeReason, "source===client:", source === this.client);
+    diagLog(
+      "handleStatusChange",
+      connected ? "true" : "false",
+      "closeCode:",
+      closeCode,
+      "closeReason:",
+      closeReason,
+      "source===client:",
+      source === this.client,
+      "connectionStatus before:",
+      this.snapshot.connectionStatus
+    );
     this.clearConnectingTimeout();
 
     if (!connected) {
@@ -588,10 +615,14 @@ class GameSessionStore {
     this.setSnapshot({
       connectionStatus: connected ? "connected" : "disconnected",
     });
+    diagLog("connectionStatus set to", connected ? "connected" : "disconnected");
 
     if (connected) {
       this.flushPendingMessages();
 
+      // If we had a persisted room and just opened the socket from bootstrap, send player.reconnect
+      // once. Do NOT call attemptReconnect() here: it runs ensureAuthenticated() again (second POST)
+      // and can trigger a second auth/ws cycle. We are already connected; only send the message.
       if (
         !this.initializedReconnect &&
         this.snapshot.roomStatus === "reconnecting" &&
@@ -599,7 +630,11 @@ class GameSessionStore {
         this.snapshot.sessionToken
       ) {
         this.initializedReconnect = true;
-        void this.attemptReconnect();
+        this.sendMessage({
+          type: "player.reconnect",
+          roomId: this.snapshot.roomId,
+          sessionToken: this.snapshot.sessionToken,
+        });
       }
     }
 
@@ -817,6 +852,7 @@ class GameSessionStore {
   }
 
   private clearAuthState() {
+    diagLog("clearAuthState called");
     clearSessionJson(AUTH_STORAGE_KEY);
     this.authPromise = null;
     this.client?.disconnect();
@@ -832,12 +868,15 @@ class GameSessionStore {
 
   private async ensureAuthenticated(playerName?: string, forceRefresh = false) {
     const initData = getTelegramInitData();
+    diagLog("ensureAuthenticated called", "hasToken:", !!this.snapshot.authToken, "forceRefresh:", forceRefresh);
 
     if (this.snapshot.authToken && !forceRefresh) {
+      diagLog("ensureAuthenticated: using existing token");
       return this.snapshot.authToken;
     }
 
     if (this.authPromise) {
+      diagLog("ensureAuthenticated: reusing authPromise");
       return this.authPromise;
     }
 
@@ -1013,12 +1052,15 @@ export function useGameSession(autoConnect = true) {
     // When in Telegram: run bootstrap (POST /auth/telegram) first; only then open WS.
     if (isTelegramMiniApp()) {
       if (snapshot.telegramBootstrapStatus === "idle") {
+        diagLog("effect: telegramBootstrapStatus idle -> startTelegramBootstrap()");
         void gameSessionStore.startTelegramBootstrap();
       }
       if (snapshot.telegramBootstrapStatus === "success" && snapshot.authToken) {
-        // Avoid reconnecting when already connected (e.g. after Strict Mode remount).
         if (snapshot.connectionStatus !== "connected") {
+          diagLog("effect: bootstrap success, authToken present, not connected -> connect()");
           gameSessionStore.connect(snapshot.authToken);
+        } else {
+          diagLog("effect: bootstrap success but already connected, skip connect");
         }
       }
       // Do not disconnect on unmount in Telegram: avoids closing the socket on React Strict Mode
