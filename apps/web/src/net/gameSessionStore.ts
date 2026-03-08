@@ -306,7 +306,12 @@ class GameSessionStore {
       return this.authPromise?.then(() => {}) ?? Promise.resolve();
     }
 
+    // Already bootstrapped and connected: do nothing (prevents repeat auth/ws).
     if (this.snapshot.telegramBootstrapStatus === "success" && this.snapshot.authToken) {
+      return Promise.resolve();
+    }
+    if (this.snapshot.connectionStatus === "connected") {
+      this.setSnapshot({ telegramBootstrapStatus: "success" });
       return Promise.resolve();
     }
 
@@ -1051,8 +1056,9 @@ export function useGameSession(autoConnect = true) {
     }
     // When in Telegram: run bootstrap (POST /auth/telegram) first; only then open WS.
     if (isTelegramMiniApp()) {
-      if (snapshot.telegramBootstrapStatus === "idle") {
-        diagLog("effect: telegramBootstrapStatus idle -> startTelegramBootstrap()");
+      // Only start bootstrap when idle and not already connected (prevents repeat auth/ws loop).
+      if (snapshot.telegramBootstrapStatus === "idle" && snapshot.connectionStatus !== "connected") {
+        diagLog("effect: telegramBootstrapStatus idle, not connected -> startTelegramBootstrap()");
         void gameSessionStore.startTelegramBootstrap();
       }
       if (snapshot.telegramBootstrapStatus === "success" && snapshot.authToken) {
