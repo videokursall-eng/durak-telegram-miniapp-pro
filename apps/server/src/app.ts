@@ -1026,6 +1026,15 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Single-origin: serve frontend build and SPA fallback (after /auth, /ws, /health, etc.)
   const staticRoot = options.staticRoot ?? null;
   if (staticRoot && fs.existsSync(staticRoot) && fs.statSync(staticRoot).isDirectory()) {
+    /** Paths that must return 404 instead of SPA index.html (probes, env, stripe, random .json, etc.). */
+    function isGarbagePath(rawPath: string): boolean {
+      const p = rawPath.replace(/^\/+/, "").toLowerCase();
+      if (p.startsWith(".env") || p === ".env" || p.startsWith(".env.")) return true;
+      if (p.startsWith("stripe") || p.startsWith("stripe/")) return true;
+      if (p.endsWith(".json")) return true;
+      if (p.startsWith("api/")) return true;
+      return false;
+    }
     // Stub so any old SW registration gets a no-op script; no-cache so shell stays fresh.
     app.get("/sw.js", (_request, reply) => {
       return reply
@@ -1046,7 +1055,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
       done();
     });
     app.setNotFoundHandler((request, reply) => {
-      if (request.method === "GET") {
+      const rawPath = request.url?.split("?")[0] ?? "";
+      if (request.method === "GET" && !isGarbagePath(rawPath)) {
         return reply
           .header("Cache-Control", "no-store, no-cache, must-revalidate")
           .type("text/html")

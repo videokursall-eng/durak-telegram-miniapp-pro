@@ -1056,7 +1056,11 @@ export function useGameSession(autoConnect = true) {
     }
     // When in Telegram: run bootstrap (POST /auth/telegram) first; only then open WS.
     if (isTelegramMiniApp()) {
-      // Only start bootstrap when idle and not already connected (prevents repeat auth/ws loop).
+      // Already connected: do nothing. Prevents any effect re-run from re-triggering auth/connect loop.
+      if (snapshot.connectionStatus === "connected") {
+        diagLog("effect: already connected, skip");
+        return;
+      }
       if (snapshot.telegramBootstrapStatus === "idle" && snapshot.connectionStatus !== "connected") {
         diagLog("effect: telegramBootstrapStatus idle, not connected -> startTelegramBootstrap()");
         void gameSessionStore.startTelegramBootstrap();
@@ -1069,8 +1073,6 @@ export function useGameSession(autoConnect = true) {
           diagLog("effect: bootstrap success but already connected, skip connect");
         }
       }
-      // Do not disconnect on unmount in Telegram: avoids closing the socket on React Strict Mode
-      // double-mount and keeps the connection alive when the component tree re-renders.
       return;
     }
     // Local dev: never auto-connect on mount; WS is opened only after auth (createRoom/joinRoom).
@@ -1083,7 +1085,7 @@ export function useGameSession(autoConnect = true) {
     return () => {
       gameSessionStore.disconnect();
     };
-  }, [autoConnect, snapshot.telegramBootstrapStatus, snapshot.authToken]);
+  }, [autoConnect, snapshot.telegramBootstrapStatus, snapshot.authToken, snapshot.connectionStatus]);
 
   return {
     ...snapshot,
