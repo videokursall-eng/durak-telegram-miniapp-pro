@@ -169,19 +169,30 @@ class GameSessionStore {
     const persistedAuth =
       typeof window !== "undefined" ? loadSessionJson<AuthSession>(AUTH_STORAGE_KEY) : null;
 
+    // В проде авто-reconnect между сессиями больше не используем — он даёт нестабильный UX,
+    // когда старые данные комнаты мешают новому запуску. Если что-то осталось в сторадже,
+    // просто очищаем и стартуем с чистого лобби.
+    if (persistedRoom && typeof window !== "undefined") {
+      try {
+        clearJson(ROOM_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+
     return {
       connectionStatus: "idle",
-      roomStatus: persistedRoom ? "reconnecting" : "lobby",
-      roomId: persistedRoom?.roomId ?? null,
+      roomStatus: "lobby",
+      roomId: null,
       room: null,
       roomState: null,
       authToken: persistedAuth?.token ?? null,
-      selfPlayerId: persistedRoom?.selfPlayerId ?? null,
-      sessionToken: persistedRoom?.sessionToken ?? null,
+      selfPlayerId: null,
+      sessionToken: null,
       isHost: false,
       lastMessage: null,
       lastError: null,
-      isReconnecting: Boolean(persistedRoom),
+      isReconnecting: false,
       isUsingDemoFallback: false,
       isAuthenticating: false,
       pendingAction: null,
