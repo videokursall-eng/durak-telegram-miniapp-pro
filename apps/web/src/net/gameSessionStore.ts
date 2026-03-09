@@ -297,16 +297,20 @@ class GameSessionStore {
    * Call once on app start when in Telegram. WS and room flow are allowed only after success.
    */
   startTelegramBootstrap = (): Promise<void> => {
-    if (!isTelegramMiniApp() || !getTelegramInitData()) {
+    if (!isTelegramMiniApp()) {
       this.setSnapshot({ telegramBootstrapStatus: "success" });
+      if (this.snapshot.authToken) this.connect(this.snapshot.authToken);
+      return Promise.resolve();
+    }
+    if (!getTelegramInitData()) {
+      this.setSnapshot({ telegramBootstrapStatus: "success" });
+      if (this.snapshot.authToken) this.connect(this.snapshot.authToken);
       return Promise.resolve();
     }
 
     if (this.snapshot.telegramBootstrapStatus === "loading") {
       return this.authPromise?.then(() => {}) ?? Promise.resolve();
     }
-
-    // Already bootstrapped and connected: do nothing (prevents repeat auth/ws).
     if (this.snapshot.telegramBootstrapStatus === "success" && this.snapshot.authToken) {
       return Promise.resolve();
     }
@@ -321,9 +325,7 @@ class GameSessionStore {
       tg.expand?.();
     }
 
-    // Clear any existing socket before auth so we don't close the post-auth socket in .then() race.
     if (this.client) {
-      diagLog("startTelegramBootstrap: disconnecting existing client before auth");
       this.client.disconnect();
       this.client = null;
       this.clearConnectingTimeout();
@@ -334,10 +336,9 @@ class GameSessionStore {
     this.authPromise = this.ensureAuthenticated(undefined, true);
     return this.authPromise
       .then((token) => {
-        this.setSnapshot({ telegramBootstrapStatus: "success" });
-        // Open WebSocket immediately after auth success. Do not rely on effect timing.
-        if (this.snapshot.connectionStatus === "idle" || this.snapshot.connectionStatus === "disconnected") {
-          this.connect(token);
+        this.setSnapshot({ telegramBootstrapStatus: "success", authToken: token });
+        if (this.snapshot.connectionStatus !== "connecting" && this.snapshot.connectionStatus !== "connected") {
+          setTimeout(() => this.connect(token), 0);
         }
       })
       .catch(() => {
