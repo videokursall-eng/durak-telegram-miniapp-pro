@@ -627,9 +627,10 @@ class GameSessionStore {
 
     const wasConnecting = this.snapshot.connectionStatus === "connecting";
 
-    // Successful socket open: clear "connecting" state so the UI leaves "Connecting to server".
+    // Успешное открытие сокета: выходим из "connecting" и сбрасываем предыдущие ошибки.
     this.setSnapshot({
       connectionStatus: connected ? "connected" : "disconnected",
+      ...(connected ? { lastError: null, lastMessage: null, pendingAction: null } : {}),
     });
     diagLog("connectionStatus set to", connected ? "connected" : "disconnected");
 
@@ -655,14 +656,30 @@ class GameSessionStore {
     }
 
     if (!connected) {
-      if (!this.snapshot.isUsingDemoFallback && this.snapshot.roomId && this.snapshot.sessionToken) {
+      const hasActiveRoom = Boolean(this.snapshot.roomId && this.snapshot.sessionToken);
+      const authRejected =
+        closeCode === 4401 || closeReason === "AUTH_REQUIRED" || closeReason === "AUTH_INVALID";
+
+      // Если комнаты ещё нет и это не явный отказ в авторизации — считаем обрыв нефатальным.
+      // Не блокируем лобби сообщением "Не удалось подключиться к серверу" при коде 1006 и т.п.
+      if (!hasActiveRoom && !authRejected) {
+        diagLog("connection closed without active room; suppressing network error", closeCode, closeReason);
+        this.setSnapshot({
+          lastMessage: null,
+          lastError: null,
+          pendingAction: null,
+          isAuthenticating: false,
+        });
+        this.maybeEnableDemoFallback();
+        return;
+      }
+
+      if (!this.snapshot.isUsingDemoFallback && hasActiveRoom) {
         this.setSnapshot({
           roomStatus: "reconnecting",
           isReconnecting: true,
         });
       } else {
-        // Bootstrap/connection failed: set error. Do NOT clearAuthState here to avoid loop; user clicks Retry.
-        const authRejected = closeCode === 4401 || closeReason === "AUTH_REQUIRED" || closeReason === "AUTH_INVALID";
         const errorMessage: ErrorMessage = authRejected
           ? {
               type: "error",
