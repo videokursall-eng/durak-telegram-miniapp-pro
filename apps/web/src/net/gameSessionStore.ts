@@ -1048,27 +1048,14 @@ export function useGameSession(autoConnect = true) {
   );
 
   useEffect(() => {
-    if (!autoConnect) {
-      return;
-    }
-    if (isTelegramMiniApp()) {
-      // Only start bootstrap when idle. Connect is called inside startTelegramBootstrap() after auth success.
-      if (snapshot.telegramBootstrapStatus === "idle") {
-        diagLog("effect: idle -> startTelegramBootstrap()");
-        void gameSessionStore.startTelegramBootstrap();
-      }
-      return;
-    }
-    if (isLocalDevAuthEnabled()) {
-      return;
-    }
+    if (!autoConnect) return;
+    if (isTelegramMiniApp()) return;
+    if (isLocalDevAuthEnabled()) return;
     if (snapshot.authToken && snapshot.connectionStatus === "idle") {
       gameSessionStore.connect(snapshot.authToken);
     }
-    return () => {
-      gameSessionStore.disconnect();
-    };
-  }, [autoConnect, snapshot.telegramBootstrapStatus, snapshot.authToken, snapshot.connectionStatus]);
+    return () => gameSessionStore.disconnect();
+  }, [autoConnect, snapshot.authToken, snapshot.connectionStatus]);
 
   return {
     ...snapshot,

@@ -79,6 +79,13 @@ export default function App() {
     };
   }, []);
 
+  // Telegram: run auth + WebSocket once on app load. Single trigger, no dependency on store snapshot.
+  useEffect(() => {
+    if (isTelegramMiniApp()) {
+      gameSessionStore.startTelegramBootstrap();
+    }
+  }, []);
+
   useEffect(() => {
     if (roomStatus !== "starting" || !roomState) {
       return;
@@ -167,6 +174,7 @@ export default function App() {
         <span className="app-spinner" style={{ width: 40, height: 40 }} aria-hidden="true" />
         <span style={{ fontSize: 16, fontWeight: 600 }}>Авторизация…</span>
         <span style={{ fontSize: 14, opacity: 0.9 }}>Подключение к серверу</span>
+        <span style={{ fontSize: 11, opacity: 0.5 }}>build 2025-03-10</span>
       </div>
     );
   }
