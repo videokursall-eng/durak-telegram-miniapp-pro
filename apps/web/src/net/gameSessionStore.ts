@@ -165,7 +165,6 @@ class GameSessionStore {
     const persistedRoom = typeof window !== "undefined" ? loadJson<PersistedSession>(ROOM_STORAGE_KEY) : null;
     const persistedAuth =
       typeof window !== "undefined" ? loadSessionJson<AuthSession>(AUTH_STORAGE_KEY) : null;
-    const hasToken = Boolean(persistedAuth?.token);
 
     return {
       connectionStatus: "idle",
@@ -183,8 +182,7 @@ class GameSessionStore {
       isUsingDemoFallback: false,
       isAuthenticating: false,
       pendingAction: null,
-      // With saved token, skip POST /auth/telegram on load; effect will only open WS.
-      telegramBootstrapStatus: hasToken ? "success" : "idle",
+      telegramBootstrapStatus: "idle",
     };
   })();
 
@@ -656,11 +654,8 @@ class GameSessionStore {
           isReconnecting: true,
         });
       } else {
+        // Bootstrap/connection failed: set error. Do NOT clearAuthState here to avoid loop; user clicks Retry.
         const authRejected = closeCode === 4401 || closeReason === "AUTH_REQUIRED" || closeReason === "AUTH_INVALID";
-        if (authRejected) {
-          this.clearAuthState();
-        }
-        // Bootstrap/connection failed: always surface a meaningful error so we never leave an endless spinner.
         const errorMessage: ErrorMessage = authRejected
           ? {
               type: "error",
@@ -681,6 +676,7 @@ class GameSessionStore {
           lastError: errorMessage,
           pendingAction: null,
           isAuthenticating: false,
+          ...(authRejected ? { telegramBootstrapStatus: "error" as const } : {}),
         });
         if (import.meta.env.DEV) {
           console.warn("[dev] connection closed", { closeCode, closeReason, authRejected });
