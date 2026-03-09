@@ -74,7 +74,7 @@ export function registerWsGateway(fastify: FastifyInstance): void {
       req.log.info({ connectionId }, 'connection.ready sent');
 
       // ---------- message routing ----------
-      socket.on('message', (raw) => {
+      socket.on('message', (raw: Buffer | string) => {
         let msg: Record<string, unknown>;
         try {
           msg = JSON.parse(raw.toString()) as Record<string, unknown>;
@@ -106,7 +106,7 @@ export function registerWsGateway(fastify: FastifyInstance): void {
         registry.remove(connectionId);
       });
 
-      socket.on('error', (err) => {
+      socket.on('error', (err: Error) => {
         req.log.error({ connectionId, err }, 'ws error');
         registry.remove(connectionId);
       });
