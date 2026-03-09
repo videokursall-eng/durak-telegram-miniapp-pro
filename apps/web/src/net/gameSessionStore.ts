@@ -79,6 +79,9 @@ export type GameSessionSnapshot = {
   pendingAction: PendingAction;
   /** Set when app is opened in Telegram; WS and room flow allowed only after 'success'. */
   telegramBootstrapStatus: TelegramBootstrapStatus;
+  /** Last WebSocket close diagnostics to surface in UI when DevTools are unavailable. */
+  lastCloseCode: number | null;
+  lastCloseReason: string | null;
 };
 
 type Listener = () => void;
@@ -183,6 +186,8 @@ class GameSessionStore {
       isAuthenticating: false,
       pendingAction: null,
       telegramBootstrapStatus: "idle",
+      lastCloseCode: null,
+      lastCloseReason: null,
     };
   })();
 
@@ -553,10 +558,21 @@ class GameSessionStore {
   };
 
   private handleTransportError = (message: string) => {
-    const displayMessage =
-      message === "WebSocket connection error"
-        ? "Ошибка WebSocket. Убедитесь, что туннель проксирует путь /ws на backend (порт 8080) и сервер запущен."
-        : message;
+    let displayMessage: string;
+    if (message === "WebSocket connection error") {
+      displayMessage =
+        "Ошибка WebSocket. Убедитесь, что туннель проксирует путь /ws на backend (порт 8080) и сервер запущен.";
+    } else if (message === "WebSocket connection closed") {
+      const code = this.snapshot.lastCloseCode;
+      const reason = this.snapshot.lastCloseReason;
+      const details =
+        code != null
+          ? ` (код ${code}${reason ? `, причина: ${reason}` : ""})`
+          : "";
+      displayMessage = `Соединение WebSocket закрыто${details}.`;
+    } else {
+      displayMessage = message;
+    }
     const error: ErrorMessage = {
       type: "error",
       code: "NETWORK_ERROR",
@@ -609,6 +625,10 @@ class GameSessionStore {
         return;
       }
       this.client = null;
+      this.setSnapshot({
+        lastCloseCode: closeCode ?? null,
+        lastCloseReason: closeReason ?? null,
+      });
     }
 
     const wasConnecting = this.snapshot.connectionStatus === "connecting";
