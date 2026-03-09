@@ -165,6 +165,7 @@ class GameSessionStore {
     const persistedRoom = typeof window !== "undefined" ? loadJson<PersistedSession>(ROOM_STORAGE_KEY) : null;
     const persistedAuth =
       typeof window !== "undefined" ? loadSessionJson<AuthSession>(AUTH_STORAGE_KEY) : null;
+    const hasToken = Boolean(persistedAuth?.token);
 
     return {
       connectionStatus: "idle",
@@ -182,7 +183,8 @@ class GameSessionStore {
       isUsingDemoFallback: false,
       isAuthenticating: false,
       pendingAction: null,
-      telegramBootstrapStatus: "idle",
+      // With saved token, skip POST /auth/telegram on load; effect will only open WS.
+      telegramBootstrapStatus: hasToken ? "success" : "idle",
     };
   })();
 
@@ -519,7 +521,11 @@ class GameSessionStore {
         return;
 
       case "error":
-        if (message.code === "AUTH_REQUIRED" || message.code === "AUTH_INVALID") {
+        // Only clear auth when we're actually connected (error refers to current session). Avoids clearing on stale messages.
+        if (
+          (message.code === "AUTH_REQUIRED" || message.code === "AUTH_INVALID") &&
+          this.snapshot.connectionStatus === "connected"
+        ) {
           this.clearAuthState();
         }
         const wasCreateRoom = this.snapshot.pendingAction === "create_room";
@@ -650,8 +656,11 @@ class GameSessionStore {
           isReconnecting: true,
         });
       } else {
-        // Bootstrap/connection failed: always surface a meaningful error so we never leave an endless spinner.
         const authRejected = closeCode === 4401 || closeReason === "AUTH_REQUIRED" || closeReason === "AUTH_INVALID";
+        if (authRejected) {
+          this.clearAuthState();
+        }
+        // Bootstrap/connection failed: always surface a meaningful error so we never leave an endless spinner.
         const errorMessage: ErrorMessage = authRejected
           ? {
               type: "error",
