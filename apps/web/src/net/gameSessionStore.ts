@@ -355,8 +355,9 @@ class GameSessionStore {
     if (import.meta.env.DEV) {
       console.info("room create request started");
     }
-    // Telegram: ensureAuthenticated already run at bootstrap; dev: ensureAuthenticated then connect then send.
-    const token = await this.ensureAuthenticated(playerName, true);
+    // Telegram: ensureAuthenticated already run at bootstrap; reuse existing token.
+    // Dev: ensureAuthenticated will issue dev token on first call, then reuse it.
+    const token = await this.ensureAuthenticated(playerName);
     this.connect(token);
     this.sendMessage({ type: "room.create" });
   };
@@ -370,8 +371,8 @@ class GameSessionStore {
     if (import.meta.env.DEV) {
       console.info("[dev] join room request start", { roomId: roomId.trim().toUpperCase() });
     }
-    // Same dev bootstrap order: (1) /auth/dev, (2) store auth, (3) open WS with auth.
-    const token = await this.ensureAuthenticated(playerName, true);
+    // Auth: reuse existing Telegram/dev token when available; avoid extra /auth calls.
+    const token = await this.ensureAuthenticated(playerName);
     this.connect(token);
     this.sendMessage({
       type: "room.join",
