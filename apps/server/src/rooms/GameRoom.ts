@@ -263,18 +263,20 @@ export class GameRoom {
     if (!member.isHost) {
       throw new Error("Only host can start the room");
     }
-    if (this.members.length < 2) {
-      throw new Error("Need at least 2 players to start");
-    }
+    // Allow 1 player: add a bot as second player for the match
+    const matchPlayers =
+      this.members.length >= 2
+        ? this.members.map((current) => ({ id: current.playerId, name: current.name }))
+        : [
+            ...this.members.map((current) => ({ id: current.playerId, name: current.name })),
+            { id: "bot_1" as PlayerId, name: "Bot" },
+          ];
 
     this.mode = mode;
     this.state = startGame({
       matchId: `${this.id}-${Date.now()}`,
       mode,
-      players: this.members.map((current) => ({
-        id: current.playerId,
-        name: current.name,
-      })),
+      players: matchPlayers,
     });
 
     const payload: RoomStartedMessage = {

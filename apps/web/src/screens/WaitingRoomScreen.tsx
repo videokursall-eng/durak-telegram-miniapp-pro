@@ -103,14 +103,14 @@ export function WaitingRoomScreen({
           <button
             style={buttonStyle}
             onClick={() => onStart("simple")}
-            disabled={isBusy || (room?.players.length ?? 0) < 2}
+            disabled={isBusy}
           >
             {isBusy ? "Запуск..." : "Старт: простой"}
           </button>
           <button
             style={buttonStyle}
             onClick={() => onStart("transfer")}
-            disabled={isBusy || (room?.players.length ?? 0) < 2}
+            disabled={isBusy}
           >
             {isBusy ? "Запуск..." : "Старт: переводной"}
           </button>

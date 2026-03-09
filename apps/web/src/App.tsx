@@ -38,6 +38,7 @@ function useIsMobile(): boolean {
 
 export default function App() {
   const [hud, setHud] = useState<HudState>(initialHud);
+  const [loadingStuckFallback, setLoadingStuckFallback] = useState(false);
   const isMobile = useIsMobile();
   const {
     connectionStatus,
@@ -82,12 +83,27 @@ export default function App() {
   // Telegram: run auth + WebSocket once on app load. Повтор через 400 ms, если скрипт Telegram подгрузился с задержкой.
   useEffect(() => {
     if (!isTelegramMiniApp()) return;
-    startTelegramBootstrap();
-    const t = window.setTimeout(() => {
-      startTelegramBootstrap();
-    }, 400);
+    const run = () => {
+      try {
+        startTelegramBootstrap();
+      } catch (e) {
+        console.error("[bootstrap]", e);
+      }
+    };
+    run();
+    const t = window.setTimeout(run, 400);
     return () => window.clearTimeout(t);
   }, [startTelegramBootstrap]);
+
+  // Если в Telegram висим в «Авторизация…» дольше 5 с — показываем лобби, чтобы можно было нажать «Создать комнату».
+  useEffect(() => {
+    if (!isTelegramMiniApp() || telegramBootstrapStatus !== "loading") {
+      setLoadingStuckFallback(false);
+      return;
+    }
+    const t = window.setTimeout(() => setLoadingStuckFallback(true), 5000);
+    return () => window.clearTimeout(t);
+  }, [telegramBootstrapStatus]);
 
   useEffect(() => {
     if (roomStatus !== "starting" || !roomState) {
@@ -156,8 +172,9 @@ export default function App() {
         ? "Соединение потеряно, пытаемся восстановить матч"
         : "Тап по карте выбирает ее, drag помогает прицелиться перед действием");
 
-  // Telegram Mini App bootstrap: show loading or error until auth succeeds.
-  if (isTelegramMiniApp() && (telegramBootstrapStatus === "idle" || telegramBootstrapStatus === "loading")) {
+  // Telegram Mini App bootstrap: show loading or error until auth succeeds. После 5 с в loading показываем лобби (fallback).
+  const showTelegramLoading = isTelegramMiniApp() && (telegramBootstrapStatus === "idle" || telegramBootstrapStatus === "loading") && !loadingStuckFallback;
+  if (showTelegramLoading) {
     return (
       <div
         style={{
@@ -177,7 +194,9 @@ export default function App() {
         <span className="app-spinner" style={{ width: 40, height: 40 }} aria-hidden="true" />
         <span style={{ fontSize: 16, fontWeight: 600 }}>Авторизация…</span>
         <span style={{ fontSize: 14, opacity: 0.9 }}>Подключение к серверу</span>
-        <span style={{ fontSize: 11, opacity: 0.5 }}>build 2025-03-10</span>
+        <span style={{ fontSize: 11, opacity: 0.5 }}>
+          {typeof __BUILD_ID__ !== "undefined" ? __BUILD_ID__ : "dev"}
+        </span>
       </div>
     );
   }

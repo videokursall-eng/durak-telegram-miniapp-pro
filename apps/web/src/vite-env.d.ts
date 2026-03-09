@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __BUILD_ID__: string;
+
 interface ImportMetaEnv {
   /** development | production — controls dev auth and build behavior */
   readonly VITE_APP_ENV?: string;
