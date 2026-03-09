@@ -79,12 +79,12 @@ export default function App() {
     };
   }, []);
 
-  // Telegram: run auth + WebSocket once on app load. Single trigger, no dependency on store snapshot.
+  // Telegram: run auth + WebSocket once on app load. Single trigger.
   useEffect(() => {
     if (isTelegramMiniApp()) {
-      gameSessionStore.startTelegramBootstrap();
+      startTelegramBootstrap();
     }
-  }, []);
+  }, [startTelegramBootstrap]);
 
   useEffect(() => {
     if (roomStatus !== "starting" || !roomState) {
