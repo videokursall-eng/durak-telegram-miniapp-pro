@@ -8,7 +8,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { SocketStream } from '@fastify/websocket';
+import type { WebSocket } from '@fastify/websocket';
 import type { ClientMsg, MsgConnectionReady, MsgRoomJoined, MsgRoomPlayers } from '@durak/shared';
 import { verifyToken } from '../http/auth';
 import {
@@ -21,7 +21,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 interface AuthedConnection {
-  ws: SocketStream['socket'];
+  ws: WebSocket;
   playerId: string;
   playerName: string;
   sessionId: string;
@@ -46,8 +46,9 @@ function broadcastToRoom(roomId: string, msg: object, excludePlayerId?: string):
 }
 
 export async function registerWsGateway(app: FastifyInstance) {
-  app.get('/ws', { websocket: true }, (connection: SocketStream, _req) => {
-    const ws = connection.socket;
+  // @fastify/websocket v11 (Fastify 5): handler receives WebSocket directly (not SocketStream).
+  app.get('/ws', { websocket: true }, (socket: WebSocket, _req) => {
+    const ws = socket;
     let conn: AuthedConnection | null = null;
 
     ws.on('message', (rawData: Buffer | string) => {
