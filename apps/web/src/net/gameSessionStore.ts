@@ -333,17 +333,11 @@ class GameSessionStore {
     this.setSnapshot({ telegramBootstrapStatus: "loading", lastError: null });
     this.authPromise = this.ensureAuthenticated(undefined, true);
     return this.authPromise
-      .then(() => {
+      .then((token) => {
         this.setSnapshot({ telegramBootstrapStatus: "success" });
-        // Do NOT disconnect a client here: React's effect will run (sync or next tick) and call connect(),
-        // so this.client may already be the newly opened socket in "connecting" state. Closing it caused
-        // "WebSocket connection closed" right after connection.ready. Only close a truly stale pre-auth
-        // socket; we no longer do that here to avoid the race. Any stale socket is cleared at bootstrap start.
-        if (this.client && this.snapshot.connectionStatus !== "connected" && this.snapshot.connectionStatus !== "connecting") {
-          diagLog("bootstrap success: closing stale pre-auth client");
-          this.client.disconnect();
-          this.client = null;
-          this.setSnapshot({ connectionStatus: "disconnected" });
+        // Open WebSocket immediately after auth success. Do not rely on effect timing.
+        if (this.snapshot.connectionStatus === "idle" || this.snapshot.connectionStatus === "disconnected") {
+          this.connect(token);
         }
       })
       .catch(() => {
@@ -1056,24 +1050,14 @@ export function useGameSession(autoConnect = true) {
     if (!autoConnect) {
       return;
     }
-    // When in Telegram: run bootstrap first, then open WS once. Do NOT re-run connect when disconnected (no loop).
     if (isTelegramMiniApp()) {
+      // Only start bootstrap when idle. Connect is called inside startTelegramBootstrap() after auth success.
       if (snapshot.telegramBootstrapStatus === "idle") {
         diagLog("effect: idle -> startTelegramBootstrap()");
         void gameSessionStore.startTelegramBootstrap();
       }
-      // Connect only once after bootstrap success, while still idle. Never call connect when already connecting/connected/disconnected.
-      if (
-        snapshot.telegramBootstrapStatus === "success" &&
-        snapshot.authToken &&
-        snapshot.connectionStatus === "idle"
-      ) {
-        diagLog("effect: success + token + idle -> connect() once");
-        gameSessionStore.connect(snapshot.authToken);
-      }
       return;
     }
-    // Local dev: never auto-connect on mount; WS is opened only after auth (createRoom/joinRoom).
     if (isLocalDevAuthEnabled()) {
       return;
     }
