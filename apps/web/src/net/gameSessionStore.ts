@@ -352,9 +352,11 @@ class GameSessionStore {
     this.authPromise = this.ensureAuthenticated(undefined, true);
     return this.authPromise
       .then((token) => {
-        // Только сохраняем токен и помечаем bootstrap как успешный.
-        // Сокет откроется позже, когда пользователь создаст/подключится к комнате.
-        this.setSnapshot({ telegramBootstrapStatus: "success", authToken: token });
+        // Успешный bootstrap: сохраняем токен и сразу открываем WS один раз.
+        this.setSnapshot({ telegramBootstrapStatus: "success", authToken: token, lastError: null });
+        if (this.snapshot.connectionStatus !== "connecting" && this.snapshot.connectionStatus !== "connected") {
+          this.connect(token);
+        }
       })
       .catch(() => {
         this.setSnapshot({ telegramBootstrapStatus: "error" });
