@@ -79,11 +79,14 @@ export default function App() {
     };
   }, []);
 
-  // Telegram: run auth + WebSocket once on app load. Single trigger.
+  // Telegram: run auth + WebSocket once on app load. Повтор через 400 ms, если скрипт Telegram подгрузился с задержкой.
   useEffect(() => {
-    if (isTelegramMiniApp()) {
+    if (!isTelegramMiniApp()) return;
+    startTelegramBootstrap();
+    const t = window.setTimeout(() => {
       startTelegramBootstrap();
-    }
+    }, 400);
+    return () => window.clearTimeout(t);
   }, [startTelegramBootstrap]);
 
   useEffect(() => {
