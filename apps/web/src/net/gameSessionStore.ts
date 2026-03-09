@@ -309,18 +309,26 @@ class GameSessionStore {
   };
 
   /**
-   * Run Telegram Mini App bootstrap: init WebApp, then POST /auth/telegram with initData.
-   * Call once on app start when in Telegram. После успешной авторизации WS открывается
-   * только по действию пользователя (create/join/reconnect), чтобы не держать висящий
-   * сокет в лобби и не ловить обрыв 1006 от туннеля.
+   * Telegram Mini App: один раз при старте — POST /auth/telegram, затем открыть WebSocket.
+   * После success показывается лобби; при обрыве WS без комнаты (1006) ошибку не показываем,
+   * пользователь может нажать «Создать комнату» и мы переподключимся.
    */
   startTelegramBootstrap = (): Promise<void> => {
     if (!isTelegramMiniApp()) {
       this.setSnapshot({ telegramBootstrapStatus: "success" });
+      if (this.snapshot.authToken) this.connect(this.snapshot.authToken);
       return Promise.resolve();
     }
-    if (!getTelegramInitData()) {
-      this.setSnapshot({ telegramBootstrapStatus: "success" });
+    const initData = getTelegramInitData();
+    if (!initData) {
+      this.setSnapshot({
+        telegramBootstrapStatus: "error",
+        lastError: {
+          type: "error",
+          code: "AUTH_INVALID",
+          message: "Откройте приложение из меню бота в Telegram (не по прямой ссылке).",
+        },
+      });
       return Promise.resolve();
     }
 
@@ -352,10 +360,9 @@ class GameSessionStore {
     this.authPromise = this.ensureAuthenticated(undefined, true);
     return this.authPromise
       .then((token) => {
-        // Успешный bootstrap: сохраняем токен и сразу открываем WS один раз.
         this.setSnapshot({ telegramBootstrapStatus: "success", authToken: token, lastError: null });
         if (this.snapshot.connectionStatus !== "connecting" && this.snapshot.connectionStatus !== "connected") {
-          this.connect(token);
+          setTimeout(() => this.connect(token), 0);
         }
       })
       .catch(() => {
