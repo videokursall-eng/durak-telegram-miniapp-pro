@@ -476,23 +476,20 @@ class GameSessionStore {
   private handleMessage = (message: ServerToClientMessage) => {
     switch (message.type) {
       case "connection.ready":
-        // First server message after handshake. Set "connected" so UI leaves "Подключаемся к серверу".
-        diagLog("connection.ready received (handleMessage)", "connectionStatus before:", this.snapshot.connectionStatus);
-        if (this.snapshot.connectionStatus === "connecting") {
-          this.setSnapshot({ connectionStatus: "connected" });
-          diagLog("connectionStatus set to connected after connection.ready");
-        }
+        // Server confirmed auth; we are connected. Always set so lobby shows (covers onopen/ordering).
+        diagLog("connection.ready received", "connectionStatus before:", this.snapshot.connectionStatus);
+        this.setSnapshot({ connectionStatus: "connected" });
         if (import.meta.env.DEV) {
           console.info(
             "connection.ready received",
             message.user
               ? { telegramUserId: message.user.telegramUserId, displayName: message.user.displayName }
               : undefined
-          )
+          );
         } else {
-          console.info("connection.ready received")
+          console.info("connection.ready received");
         }
-        return
+        return;
 
       case "room.created":
         this.applyJoinedRoom(message);
@@ -1059,19 +1056,19 @@ export function useGameSession(autoConnect = true) {
     if (!autoConnect) {
       return;
     }
-    // When in Telegram: run bootstrap (POST /auth/telegram) first; only then open WS.
+    // When in Telegram: run bootstrap first, then open WS once. Do NOT re-run connect when disconnected (no loop).
     if (isTelegramMiniApp()) {
-      // Already connected: do nothing. Prevents any effect re-run from re-triggering auth/connect loop.
-      if (snapshot.connectionStatus === "connected") {
-        diagLog("effect: already connected, skip");
-        return;
-      }
       if (snapshot.telegramBootstrapStatus === "idle") {
-        diagLog("effect: telegramBootstrapStatus idle, not connected -> startTelegramBootstrap()");
+        diagLog("effect: idle -> startTelegramBootstrap()");
         void gameSessionStore.startTelegramBootstrap();
       }
-      if (snapshot.telegramBootstrapStatus === "success" && snapshot.authToken) {
-        diagLog("effect: bootstrap success, authToken present, not connected -> connect()");
+      // Connect only once after bootstrap success, while still idle. Never call connect when already connecting/connected/disconnected.
+      if (
+        snapshot.telegramBootstrapStatus === "success" &&
+        snapshot.authToken &&
+        snapshot.connectionStatus === "idle"
+      ) {
+        diagLog("effect: success + token + idle -> connect() once");
         gameSessionStore.connect(snapshot.authToken);
       }
       return;
@@ -1080,7 +1077,7 @@ export function useGameSession(autoConnect = true) {
     if (isLocalDevAuthEnabled()) {
       return;
     }
-    if (snapshot.authToken) {
+    if (snapshot.authToken && snapshot.connectionStatus === "idle") {
       gameSessionStore.connect(snapshot.authToken);
     }
     return () => {
