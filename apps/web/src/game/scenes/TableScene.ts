@@ -226,6 +226,9 @@ export class TableScene extends Phaser.Scene {
 
     this.isSceneReady = true;
     this.renderFromState();
+    requestAnimationFrame(() => {
+      this.renderFromState();
+    });
   }
 
   private getMyPlayer() {

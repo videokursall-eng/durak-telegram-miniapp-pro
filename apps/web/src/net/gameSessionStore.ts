@@ -524,6 +524,9 @@ class GameSessionStore {
         return;
 
       case "room.started":
+        if (import.meta.env.DEV) {
+          console.info("[room.started] received", "hasState:", !!message.state, "roomId:", message.room?.roomId);
+        }
         this.applyRoomStarted(message);
         return;
 

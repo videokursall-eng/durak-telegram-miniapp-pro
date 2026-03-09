@@ -17,16 +17,27 @@ export function PhaserGame({ roomState, sendAction, myPlayerId = "p1" }: PhaserG
   useEffect(() => {
     if (!containerRef.current) return;
     if (gameRef.current) return;
+    if (!roomState) return;
 
-    const { game, tableScene } = createGame(containerRef.current);
-    gameRef.current = game;
-    sceneRef.current = tableScene;
-    tableScene.setSessionData(roomState, { sendAction, myPlayerId });
+    const el = containerRef.current;
+    const init = () => {
+      if (gameRef.current || !el.parentElement) return;
+      const { game, tableScene } = createGame(el);
+      gameRef.current = game;
+      sceneRef.current = tableScene;
+      tableScene.setSessionData(roomState, { sendAction, myPlayerId });
+    };
 
+    const raf = requestAnimationFrame(() => {
+      init();
+    });
     return () => {
-      gameRef.current?.destroy(true);
-      gameRef.current = null;
-      sceneRef.current = null;
+      cancelAnimationFrame(raf);
+      if (gameRef.current) {
+        gameRef.current.destroy(true);
+        gameRef.current = null;
+        sceneRef.current = null;
+      }
     };
   }, []);
 
@@ -38,7 +49,7 @@ export function PhaserGame({ roomState, sendAction, myPlayerId = "p1" }: PhaserG
     <div
       ref={containerRef}
       id="phaser-container"
-      style={{ width: "100%", height: "100%", position: "relative" }}
+      style={{ width: "100%", height: "100%", minHeight: 200, position: "relative" }}
     />
   );
 }
