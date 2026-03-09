@@ -299,17 +299,17 @@ class GameSessionStore {
 
   /**
    * Run Telegram Mini App bootstrap: init WebApp, then POST /auth/telegram with initData.
-   * Call once on app start when in Telegram. WS and room flow are allowed only after success.
+   * Call once on app start when in Telegram. После успешной авторизации WS открывается
+   * только по действию пользователя (create/join/reconnect), чтобы не держать висящий
+   * сокет в лобби и не ловить обрыв 1006 от туннеля.
    */
   startTelegramBootstrap = (): Promise<void> => {
     if (!isTelegramMiniApp()) {
       this.setSnapshot({ telegramBootstrapStatus: "success" });
-      if (this.snapshot.authToken) this.connect(this.snapshot.authToken);
       return Promise.resolve();
     }
     if (!getTelegramInitData()) {
       this.setSnapshot({ telegramBootstrapStatus: "success" });
-      if (this.snapshot.authToken) this.connect(this.snapshot.authToken);
       return Promise.resolve();
     }
 
@@ -341,10 +341,9 @@ class GameSessionStore {
     this.authPromise = this.ensureAuthenticated(undefined, true);
     return this.authPromise
       .then((token) => {
+        // Только сохраняем токен и помечаем bootstrap как успешный.
+        // Сокет откроется позже, когда пользователь создаст/подключится к комнате.
         this.setSnapshot({ telegramBootstrapStatus: "success", authToken: token });
-        if (this.snapshot.connectionStatus !== "connecting" && this.snapshot.connectionStatus !== "connected") {
-          setTimeout(() => this.connect(token), 0);
-        }
       })
       .catch(() => {
         this.setSnapshot({ telegramBootstrapStatus: "error" });
@@ -558,21 +557,16 @@ class GameSessionStore {
   };
 
   private handleTransportError = (message: string) => {
-    let displayMessage: string;
-    if (message === "WebSocket connection error") {
-      displayMessage =
-        "Ошибка WebSocket. Убедитесь, что туннель проксирует путь /ws на backend (порт 8080) и сервер запущен.";
-    } else if (message === "WebSocket connection closed") {
-      const code = this.snapshot.lastCloseCode;
-      const reason = this.snapshot.lastCloseReason;
-      const details =
-        code != null
-          ? ` (код ${code}${reason ? `, причина: ${reason}` : ""})`
-          : "";
-      displayMessage = `Соединение WebSocket закрыто${details}.`;
-    } else {
-      displayMessage = message;
+    // Abnormal close (1006) happens often because туннель/прокси/Telegram рвёт соединение.
+    // Не показываем это как красную ошибку пользователю; просто логируем и даём UI продолжать работать.
+    if (message === "WebSocket connection closed") {
+      diagLog("transport error (closed) suppressed for UI", this.snapshot.lastCloseCode, this.snapshot.lastCloseReason);
+      return;
     }
+    const displayMessage =
+      message === "WebSocket connection error"
+        ? "Ошибка WebSocket. Убедитесь, что туннель проксирует путь /ws на backend (порт 8080) и сервер запущен."
+        : message;
     const error: ErrorMessage = {
       type: "error",
       code: "NETWORK_ERROR",
