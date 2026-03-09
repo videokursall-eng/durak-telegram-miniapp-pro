@@ -1,10 +1,15 @@
 /**
  * Main App component — routes to the correct screen based on store phase.
  *
- * Also boots the auth → connect lifecycle on mount.
+ * Lifecycle:
+ *  1. On mount: signal Telegram ready, register WS handlers (once).
+ *  2. When phase === 'idle': run auth flow (POST /auth/telegram) once.
+ *  3. When phase === 'connecting' (initial or reconnect): call ws.connect().
+ *     WS client handles reconnect internally with exponential backoff.
+ *  4. WS handler for connection.ready triggers store.setReady() → phase → 'lobby'.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useStore } from '../state/store';
 import { getInitData, signalReady } from '../telegram/telegram';
 import { authTelegram } from '../net/api';
@@ -28,14 +33,64 @@ export default function App() {
   const updateGameState = useStore((s) => s.updateGameState);
   const setFinished = useStore((s) => s.setFinished);
 
-  const wsBootedRef = useRef(false);
-
   // ── Signal Telegram that we're ready to show ────────────────────────────────
   useEffect(() => {
     signalReady();
   }, []);
 
-  // ── Auth flow (runs ONCE) ───────────────────────────────────────────────────
+  // ── Register WS handlers ONCE at mount (not phase-dependent) ───────────────
+  // This prevents handler accumulation on reconnect.
+  useEffect(() => {
+    const ws = getWsClient();
+
+    const handleRoomJoined = (msg: MsgRoomJoined) => {
+      setRoom({
+        id: msg.payload.room.id,
+        name: msg.payload.room.name,
+        players: [],
+        selfPlayerId: msg.payload.selfPlayerId,
+      });
+    };
+
+    const handleMatchStarted = (msg: MsgMatchStarted) => {
+      setGame(msg.payload.matchId, msg.payload.state);
+    };
+
+    const handleStateSnapshot = (msg: MsgStateSnapshot) => {
+      updateGameState(msg.payload.state);
+    };
+
+    const handleMatchEnded = (msg: MsgMatchEnded) => {
+      setFinished({
+        matchId: msg.payload.matchId,
+        durakId: msg.payload.durakId,
+        winners: msg.payload.winners,
+        stats: msg.payload.stats,
+      });
+    };
+
+    const handleError = (msg: { code: string; message: string }) => {
+      console.error('[WS error]', msg.code, msg.message);
+      // Non-fatal WS errors don't kill the whole app
+    };
+
+    ws.on('room.joined', handleRoomJoined);
+    ws.on('match.started', handleMatchStarted);
+    ws.on('state.snapshot', handleStateSnapshot);
+    ws.on('match.ended', handleMatchEnded);
+    ws.on('error', handleError);
+
+    return () => {
+      ws.off('room.joined', handleRoomJoined);
+      ws.off('match.started', handleMatchStarted);
+      ws.off('state.snapshot', handleStateSnapshot);
+      ws.off('match.ended', handleMatchEnded);
+      ws.off('error', handleError);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps: register once, clean up on unmount
+
+  // ── Auth flow: runs only when phase is 'idle' ───────────────────────────────
   useEffect(() => {
     if (phase !== 'idle') return;
 
@@ -53,64 +108,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // ── WebSocket lifecycle (connect when token is available) ───────────────────
+  // ── WS connect: runs whenever phase becomes 'connecting' ───────────────────
+  // This covers both initial connection and reconnects after WS drops.
+  // The WS client internally handles exponential-backoff reconnect, so this
+  // effect only needs to call connect() once per 'connecting' phase entry.
   useEffect(() => {
     if (phase !== 'connecting' || !authToken) return;
-    if (wsBootedRef.current) return; // already bootstrapped in this session
-    wsBootedRef.current = true;
-
-    const ws = getWsClient();
-
-    // Register server → client handlers
-    ws.on('room.joined', (msg: MsgRoomJoined) => {
-      setRoom({
-        id: msg.payload.room.id,
-        name: msg.payload.room.name,
-        players: [],
-        selfPlayerId: msg.payload.selfPlayerId,
-      });
-    });
-
-    ws.on('match.started', (msg: MsgMatchStarted) => {
-      setGame(msg.payload.matchId, msg.payload.state);
-    });
-
-    ws.on('state.snapshot', (msg: MsgStateSnapshot) => {
-      updateGameState(msg.payload.state);
-    });
-
-    ws.on('match.ended', (msg: MsgMatchEnded) => {
-      setFinished({
-        matchId: msg.payload.matchId,
-        durakId: msg.payload.durakId,
-        winners: msg.payload.winners,
-        stats: msg.payload.stats,
-      });
-    });
-
-    ws.on('error', (msg) => {
-      console.error('[WS error]', msg.code, msg.message);
-      // Non-fatal WS errors don't kill the whole app
-    });
-
-    ws.connect(authToken);
-
-    return () => {
-      // Don't destroy the singleton — just remove this component's handlers
-      wsBootedRef.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, authToken]);
-
-  // ── Reconnect: phase flips back to 'connecting' when WS drops ──────────────
-  useEffect(() => {
-    if (phase !== 'connecting' || !authToken) return;
-    // wsBootedRef being false means this is a reconnect (component already mounted)
-    if (!wsBootedRef.current) {
-      const ws = getWsClient();
-      ws.connect(authToken);
-      wsBootedRef.current = true;
-    }
+    getWsClient().connect(authToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, authToken]);
 
@@ -121,8 +125,9 @@ export default function App() {
     case 'connecting':
       return <ConnectingScreen phase={phase} />;
     case 'lobby':
+      return <LobbyScreen />;
     case 'game':
-      return phase === 'lobby' ? <LobbyScreen /> : <GameScreen />;
+      return <GameScreen />;
     case 'finished':
       return <FinishedScreen />;
     case 'error':

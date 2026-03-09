@@ -272,13 +272,12 @@ function handleSyncState(conn: AuthedConnection, payload: { matchId: string; kno
     return;
   }
 
-  // In a real server this would fetch the authoritative GameState from a store.
-  // Here we send a minimal placeholder state to unblock the client.
+  // In a real server this would fetch the authoritative GameState from a persistent store.
+  // Here we return an error so the client knows the state is unavailable (server restarted).
   sendTo(conn, {
-    type: 'state.snapshot',
-    matchId: payload.matchId,
-    stateVersion: payload.knownStateVersion,
-    payload: { state: null },
+    type: 'error',
+    code: 'STATE_UNAVAILABLE',
+    message: 'Game state not available — server may have restarted',
   });
 }
 

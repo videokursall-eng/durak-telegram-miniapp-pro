@@ -176,14 +176,16 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setReady(playerId, sessionId) {
-    const { phase, matchId } = get();
+    const { phase, matchId, gameState } = get();
     // Only valid when connecting (initial or reconnect)
     if (phase !== 'connecting') return;
 
+    // If we have an active (non-finished) match, stay in 'game' — the WS client
+    // will send sync.state. If the match is already FINISHED or there's no match,
+    // go to lobby.
+    const isActiveMatch = matchId && gameState?.phase !== 'FINISHED';
     set({
-      // If we were mid-game, stay in 'game' — the WS client will send sync.state.
-      // Otherwise go to lobby.
-      phase: matchId ? 'game' : 'lobby',
+      phase: isActiveMatch ? 'game' : 'lobby',
       playerId,
       sessionId,
       errorMessage: null,

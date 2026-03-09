@@ -129,8 +129,13 @@ function createMock(): TelegramWebApp {
 
 const isDev = import.meta.env.DEV;
 
-export const tg: TelegramWebApp =
-  window.Telegram?.WebApp ?? (isDev ? createMock() : (() => { throw new Error('Telegram WebApp not available'); })());
+function getTelegramWebApp(): TelegramWebApp {
+  if (window.Telegram?.WebApp) return window.Telegram.WebApp;
+  if (isDev) return createMock();
+  throw new Error('Telegram WebApp not available outside Telegram client');
+}
+
+export const tg: TelegramWebApp = getTelegramWebApp();
 
 /** Returns the raw initData string to send to the server for authentication. */
 export function getInitData(): string {

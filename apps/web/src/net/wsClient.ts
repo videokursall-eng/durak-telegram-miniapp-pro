@@ -243,7 +243,8 @@ export class WsClient {
     const store = useStore.getState();
     store.setReady(msg.payload.playerId, msg.payload.sessionId);
 
-    // If we were mid-game, request a state sync to restore
+    // If we were mid-game, request a state sync to restore.
+    // Read from the store again after setReady in case it updated matchId.
     const { matchId, gameState } = useStore.getState();
     if (matchId) {
       this.send({

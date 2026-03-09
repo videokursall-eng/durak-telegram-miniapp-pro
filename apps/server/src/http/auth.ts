@@ -58,85 +58,70 @@ function validateInitData(raw: string): { userId: number; firstName: string; use
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
-  // Rate limit auth endpoints: max 10 requests per minute per IP
-  await app.register(rateLimit, {
-    max: 10,
-    timeWindow: '1 minute',
-    keyGenerator: (req) => req.ip,
-    errorResponseBuilder: () => ({
-      error: 'TOO_MANY_REQUESTS',
-      message: 'Too many auth attempts. Please wait a minute.',
-    }),
-  });
+  // Register all auth routes inside a scoped plugin so @fastify/rate-limit
+  // applies to every route in this scope.
+  await app.register(async (scoped) => {
+    await scoped.register(rateLimit, {
+      max: 10,
+      timeWindow: '1 minute',
+      keyGenerator: (req) => req.ip,
+      errorResponseBuilder: () => ({
+        error: 'TOO_MANY_REQUESTS',
+        message: 'Too many auth attempts. Please wait a minute.',
+      }),
+    });
 
-  app.post<{ Body: AuthBody }>(
-    '/auth/telegram',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['initData'],
-          properties: {
-            initData: { type: 'string' },
+    scoped.post<{ Body: AuthBody }>(
+      '/auth/telegram',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            required: ['initData'],
+            properties: {
+              initData: { type: 'string' },
+            },
           },
         },
+        config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       },
-    },
-    async (req: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) => {
-      const { initData } = req.body;
+      async (req: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) => {
+        const { initData } = req.body;
 
-      let userData: { userId: number; firstName: string; username?: string };
-      try {
-        userData = validateInitData(initData);
-      } catch (err) {
-        return reply.status(401).send({
-          error: 'INVALID_INIT_DATA',
-          message: err instanceof Error ? err.message : 'Invalid Telegram data',
-        });
-      }
+        let userData: { userId: number; firstName: string; username?: string };
+        try {
+          userData = validateInitData(initData);
+        } catch (err) {
+          return reply.status(401).send({
+            error: 'INVALID_INIT_DATA',
+            message: err instanceof Error ? err.message : 'Invalid Telegram data',
+          });
+        }
 
-      const playerId = `p_${userData.userId}`;
-      const now = Math.floor(Date.now() / 1000);
+        const playerId = `p_${userData.userId}`;
+        const now = Math.floor(Date.now() / 1000);
 
-      const payload = {
-        sub: playerId,
-        name: userData.firstName,
-        username: userData.username,
-        iat: now,
-        exp: now + TOKEN_TTL_SECONDS,
-      };
+        const payload = {
+          sub: playerId,
+          name: userData.firstName,
+          username: userData.username,
+          iat: now,
+          exp: now + TOKEN_TTL_SECONDS,
+        };
 
-      const token = jwt.sign(payload, JWT_SECRET);
+        const token = jwt.sign(payload, JWT_SECRET);
 
-      const response: AuthResponse = {
-        token,
-        playerId,
-        // expiresAt is in milliseconds (Date.now() compatible)
-        expiresAt: (now + TOKEN_TTL_SECONDS) * 1000,
-      };
+        const response: AuthResponse = {
+          token,
+          playerId,
+          // expiresAt is in milliseconds (Date.now() compatible)
+          expiresAt: (now + TOKEN_TTL_SECONDS) * 1000,
+        };
 
-      reply.send(response);
-    },
-  );
-
-  // Health check for auth service — also rate-limited
-  app.get(
-    '/auth/me',
-    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const header = req.headers.authorization;
-      if (!header?.startsWith('Bearer ')) {
-        return reply.status(401).send({ error: 'Missing token' });
-      }
-      const token = header.slice(7);
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        reply.send({ ok: true, player: decoded });
-      } catch {
-        reply.status(401).send({ error: 'Invalid token' });
-      }
-    },
-  );
+        reply.send(response);
+      },
+    );
+  });
 }
 
 export function verifyToken(token: string): { sub: string; name: string } {

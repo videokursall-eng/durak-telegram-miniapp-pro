@@ -11,8 +11,9 @@ const SUIT_COLOR: Record<string, string> = {
 };
 
 function parseCard(id: CardId) {
-  const rank = id.length === 3 ? id.slice(0, 2) : id[0];
+  // Card IDs are like "AS", "TD", "6H" — rank is everything except the last char (suit).
   const suit = id[id.length - 1];
+  const rank = id.slice(0, id.length - 1);
   return { rank, suit };
 }
 
